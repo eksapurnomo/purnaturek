@@ -95,5 +95,5 @@ return [
     TaxServiceProvider::class,
     ThemeServiceProvider::class,
     UserServiceProvider::class,
-    Webkul\B2BSuite\Providers\B2BSuiteServiceProvider::class,
+    App\Providers\SafeB2BSuiteServiceProvider::class,
 ];
