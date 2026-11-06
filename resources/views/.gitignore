@@ -1,0 +1,8 @@
+*
+!.gitignore
+!admin
+!admin/**
+!emails
+!emails/**
+!vendor
+!vendor/**
