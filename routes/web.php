@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\AiAssistantController as AdminAiAssistantController;
 use App\Http\Controllers\Admin\BuyerVerificationController as AdminBuyerVerificationController;
 use App\Http\Controllers\Admin\CompanySupplyController as AdminCompanySupplyController;
 use App\Http\Controllers\Admin\ContractTemplateController as AdminContractTemplateController;
@@ -7,6 +8,7 @@ use App\Http\Controllers\Admin\MemberContractController as AdminMemberContractCo
 use App\Http\Controllers\Admin\MemberConversationController as AdminMemberConversationController;
 use App\Http\Controllers\Admin\ProductDocumentController as AdminProductDocumentController;
 use App\Http\Controllers\Admin\WholesalePartnershipController as AdminWholesalePartnershipController;
+use App\Http\Controllers\Shop\AiAssistantChatController as ShopAiAssistantChatController;
 use App\Http\Controllers\WholesaleBuyerVerificationController;
 use App\Http\Controllers\WholesaleCompanySupplyController;
 use App\Http\Controllers\WholesaleContractController;
@@ -225,4 +227,44 @@ Route::group(['middleware' => ['web', 'admin']], function () {
         Route::get('preview', [AdminWholesalePartnershipController::class, 'preview'])
             ->name('admin.b2b.partnership_information.preview');
     });
+
+    // Native Magic AI Route (under Configure)
+    Route::get('admin/configuration/magic_ai/general', [\Webkul\Admin\Http\Controllers\ConfigurationController::class, 'index'])
+        ->defaults('slug', 'magic_ai')
+        ->defaults('slug2', 'general')
+        ->name('admin.configuration.magic_ai');
+
+    // AI Assistant Management (under Configure)
+    Route::prefix('admin/configuration/ai-assistant')->group(function () {
+        Route::get('', [AdminAiAssistantController::class, 'index'])
+            ->name('admin.ai_assistant.index');
+
+        Route::post('', [AdminAiAssistantController::class, 'update'])
+            ->name('admin.ai_assistant.update');
+
+        Route::post('test-prompt', [AdminAiAssistantController::class, 'testPrompt'])
+            ->name('admin.ai_assistant.test_prompt');
+
+        Route::post('logs/{id}/delete', [AdminAiAssistantController::class, 'deleteLog'])
+            ->name('admin.ai_assistant.logs.delete');
+
+        Route::post('logs/clear', [AdminAiAssistantController::class, 'clearLogs'])
+            ->name('admin.ai_assistant.logs.clear');
+    });
 });
+
+/*
+|--------------------------------------------------------------------------
+| PurNatureK AI Assistant — Customer-Facing Widget API Routes
+|--------------------------------------------------------------------------
+*/
+Route::group(['middleware' => ['web']], function () {
+    Route::prefix('api/v1/ai-assistant')->group(function () {
+        Route::get('config', [ShopAiAssistantChatController::class, 'config'])
+            ->name('api.ai_assistant.config');
+
+        Route::post('chat', [ShopAiAssistantChatController::class, 'chat'])
+            ->name('api.ai_assistant.chat');
+    });
+});
+

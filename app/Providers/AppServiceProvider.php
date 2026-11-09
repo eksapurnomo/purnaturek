@@ -89,6 +89,12 @@ class AppServiceProvider extends ServiceProvider
             \App\Http\Controllers\WholesaleCustomerSessionController::class
         );
 
+        /**
+         * Preserve native Bagisto Configure landing page URL when submenus are registered.
+         */
+        $this->app->bind(\Webkul\Core\Menu::class, \App\Support\Menu::class);
+        $this->app->bind(\Webkul\B2BSuite\Menu::class, \App\Support\Menu::class);
+
         $allowedIPs = array_map('trim', explode(',', config('app.debug_allowed_ips', '')));
 
         $allowedIPs = array_filter($allowedIPs);
@@ -112,6 +118,12 @@ class AppServiceProvider extends ServiceProvider
         ParallelTesting::setUpTestDatabase(function (string $database, int $token) {
             Artisan::call('db:seed');
         });
+
+        /**
+         * Preserve native Bagisto Configure landing page URL when submenus are registered.
+         */
+        $this->app->bind(\Webkul\Core\Menu::class, \App\Support\Menu::class);
+        $this->app->bind(\Webkul\B2BSuite\Menu::class, \App\Support\Menu::class);
 
         /**
          * PurNatureK Members Portal: feed the catalog grid to the customer portal landing view.
@@ -179,6 +191,20 @@ class AppServiceProvider extends ServiceProvider
                     'sort'  => 3,
                     'icon'  => 'icon-attribute',
                 ],
+                [
+                    'key'   => 'configuration.magic_ai',
+                    'name'  => 'Magic AI',
+                    'route' => 'admin.configuration.magic_ai',
+                    'sort'  => 1,
+                    'icon'  => '',
+                ],
+                [
+                    'key'   => 'configuration.ai_assistant',
+                    'name'  => 'AI Assistant',
+                    'route' => 'admin.ai_assistant.index',
+                    'sort'  => 2,
+                    'icon'  => '',
+                ],
             ]),
             'acl' => array_merge(config('acl', []), [
                 [
@@ -223,6 +249,18 @@ class AppServiceProvider extends ServiceProvider
                     'route' => 'admin.catalog.product_documents.index',
                     'sort'  => 3,
                 ],
+                [
+                    'key'   => 'configuration.magic_ai',
+                    'name'  => 'Magic AI',
+                    'route' => 'admin.configuration.magic_ai',
+                    'sort'  => 1,
+                ],
+                [
+                    'key'   => 'configuration.ai_assistant',
+                    'name'  => 'AI Assistant',
+                    'route' => 'admin.ai_assistant.index',
+                    'sort'  => 2,
+                ],
             ]),
         ]);
 
@@ -236,6 +274,51 @@ class AppServiceProvider extends ServiceProvider
 
             $routes = Route::getRoutes();
             $routes->refreshNameLookups();
+
+            /**
+             * Ensure specific AI Assistant and Magic AI configuration routes take precedence over
+             * Bagisto's wildcard route `admin/configuration/{slug?}/{slug2?}`.
+             */
+            try {
+                $refProp = new \ReflectionProperty($routes, 'routes');
+                $refProp->setAccessible(true);
+                $all = $refProp->getValue($routes);
+
+                foreach (['GET', 'POST', 'HEAD'] as $method) {
+                    if (! isset($all[$method])) {
+                        continue;
+                    }
+
+                    $methodRoutes = $all[$method];
+                    $wildcardKey = 'admin/configuration/{slug?}/{slug2?}';
+
+                    if (isset($methodRoutes[$wildcardKey])) {
+                        $before = [];
+                        $target = [];
+                        $after = [];
+                        $passedWildcard = false;
+
+                        foreach ($methodRoutes as $k => $r) {
+                            if ($k === 'admin/configuration/ai-assistant' || $k === 'admin/configuration/magic_ai/general' || str_starts_with($k, 'admin/configuration/ai-assistant/')) {
+                                $target[$k] = $r;
+                            } elseif ($k === $wildcardKey) {
+                                $passedWildcard = true;
+                                $after[$k] = $r;
+                            } elseif ($passedWildcard) {
+                                $after[$k] = $r;
+                            } else {
+                                $before[$k] = $r;
+                            }
+                        }
+
+                        $all[$method] = array_merge($before, $target, $after);
+                    }
+                }
+
+                $refProp->setValue($routes, $all);
+            } catch (\Throwable $e) {
+                // Fallback silently if reflection fails
+            }
 
             foreach (ProtectPrivateCatalog::PROTECTED_ROUTES as $routeName) {
                 $route = $routes->getByName($routeName);

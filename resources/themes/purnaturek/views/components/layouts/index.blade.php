@@ -110,6 +110,9 @@
         @stack('scripts')
 
         {!! view_render_event('bagisto.shop.layout.body.after') !!}
+
+        <!-- PurNatureK Wholesale AI Assistant Widget (Client title: "Assistant") -->
+        <script src="{{ asset('ai-assistant/widget.js') }}" async></script>
     </body>
 </html>
 

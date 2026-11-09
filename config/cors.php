@@ -19,7 +19,11 @@ return [
 
     'allowed_methods' => ['*'],
 
-    'allowed_origins' => ['*'],
+    'allowed_origins' => array_values(array_filter(array_merge([
+        'https://purnaturekbulk.com',
+        'https://www.purnaturekbulk.com',
+        'https://members.purnaturekbulk.com',
+    ], explode(',', env('CORS_ALLOWED_ORIGINS', 'http://localhost:8080,http://127.0.0.1:8080,http://localhost:3000,http://localhost:5173'))))),
 
     'allowed_origins_patterns' => [],
 

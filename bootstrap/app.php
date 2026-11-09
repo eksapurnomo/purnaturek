@@ -43,6 +43,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->validateCsrfTokens(except: [
             'stripe/*',
+            'api/v1/ai-assistant/*',
         ]);
 
         $middleware->trustProxies(at: '*');
