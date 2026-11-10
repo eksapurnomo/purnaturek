@@ -28,7 +28,7 @@ class WholesaleConversationController extends Controller
 
         $unreadCount = MemberConversationManager::getUnreadCountForMember($customer);
 
-        return view('vendor.shop.customers.account.conversations.index', compact('conversations', 'unreadCount'));
+        return view('shop::customers.account.conversations.index', compact('conversations', 'unreadCount'));
     }
 
     /**
@@ -40,7 +40,7 @@ class WholesaleConversationController extends Controller
         $prefilledSubject = (string) $request->query('subject', '');
         $prefilledCategory = (string) $request->query('category', MemberConversation::CATEGORY_GENERAL_INQUIRY);
 
-        return view('vendor.shop.customers.account.conversations.create', compact(
+        return view('shop::customers.account.conversations.create', compact(
             'categories',
             'prefilledSubject',
             'prefilledCategory'
@@ -75,7 +75,7 @@ class WholesaleConversationController extends Controller
 
         MemberConversationManager::markAsReadByMember($conversation, $customer);
 
-        return view('vendor.shop.customers.account.conversations.view', compact('conversation'));
+        return view('shop::customers.account.conversations.view', compact('conversation'));
     }
 
     /**

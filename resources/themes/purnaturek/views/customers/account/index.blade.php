@@ -1,80 +1,199 @@
 {{--
-    PurNatureK Members Portal — Member Catalog Homepage
+    PurNatureK Members Portal — Member Workspace & Wholesale Catalog
     (shop::customers.account.index).
 
-    Data (catalogCards, catalogProducts, catalogCategories, etc.) is supplied by
+    Data ($catalogCards, $catalogProducts, $catalogCategories, etc.) is supplied by
     App\View\Composers\MemberCatalogComposer.
 --}}
+@php
+    $workspaceCustomer = auth()->guard('customer')->user();
+    $verificationStatus = $workspaceCustomer
+        ? \App\Support\BuyerVerificationManager::getVerificationStatus($workspaceCustomer)
+        : null;
+    $isVerified = $workspaceCustomer
+        ? \App\Support\BuyerVerificationManager::isVerifiedBuyer($workspaceCustomer)
+        : false;
+    $unreadCount = $workspaceCustomer
+        ? \App\Support\MemberConversationManager::getUnreadCountForMember($workspaceCustomer)
+        : 0;
+    $pendingContracts = $workspaceCustomer
+        ? \App\Models\MemberContract::query()
+            ->forCustomer((int) $workspaceCustomer->id)
+            ->where('status', \App\Models\MemberContract::STATUS_SENT)
+            ->count()
+        : 0;
+@endphp
+
 <x-shop::layouts.account>
     <x-slot:title>
         Wholesale Catalog — PurNatureK Members Portal
     </x-slot>
 
-    <!-- Sidebar Navigation -->
+    <!-- Desktop Sidebar Navigation -->
     <div class="max-md:hidden">
         <x-shop::layouts.account.navigation />
     </div>
 
     <!-- Main Workspace Area -->
-    <div class="flex-1 min-w-0" id="catalog" v-pre>
-        <div class="space-y-6">
-            <!-- Welcome Header Card -->
-            <div class="bg-white border border-[#d9e6e1] rounded-2xl p-6 sm:p-8 shadow-sm">
-                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-[#d9e6e1] pb-5">
+    <div class="pk-stack-md" id="catalog" v-pre>
+        <!-- Tier Verification Contextual Banner -->
+        @if ($workspaceCustomer && ! $isVerified)
+            @if ($verificationStatus === 'pending')
+                <x-shop::portal.alert
+                    variant="warning"
+                    title="Buyer Verification Under Commercial Review"
+                >
+                    You currently have Tier 1 Member access to specifications and documentation. Tier 2 quotation and wholesale purchasing workflows unlock upon application approval.
+                    <x-slot:actions>
+                        <x-shop::portal.button :href="route('shop.customers.account.buyer_verification.index')" variant="secondary" size="sm">
+                            View Application Status &rarr;
+                        </x-shop::portal.button>
+                    </x-slot>
+                </x-shop::portal.alert>
+            @elseif ($verificationStatus === 'rejected')
+                <x-shop::portal.alert
+                    variant="danger"
+                    title="Verification Action Required"
+                >
+                    Your previous buyer verification submission requires updated business documentation before Tier 2 purchasing privileges can be enabled.
+                    <x-slot:actions>
+                        <x-shop::portal.button :href="route('shop.customers.account.buyer_verification.index')" variant="primary" size="sm">
+                            Update Submission &rarr;
+                        </x-shop::portal.button>
+                    </x-slot>
+                </x-shop::portal.alert>
+            @else
+                <x-shop::portal.alert
+                    variant="info"
+                    title="Complete Tier 2 Buyer Verification to Unlock Quotations"
+                >
+                    Submit your business registration and resale documentation to request official B2B quotes and submit commercial purchase orders.
+                    <x-slot:actions>
+                        <x-shop::portal.button :href="route('shop.customers.account.buyer_verification.index')" variant="primary" size="sm">
+                            Start Verification &rarr;
+                        </x-shop::portal.button>
+                    </x-slot>
+                </x-shop::portal.alert>
+            @endif
+        @endif
+
+        <!-- Quick Workspace Actions (Shown on initial landing / unfiltered overview) -->
+        @if (! $catalogFiltered && $catalogProducts->currentPage() === 1)
+            <div class="pk-grid-4">
+                <a href="{{ route('shop.customers.account.quotes.index') }}" class="pk-shortcut-card">
+                    <div class="pk-shortcut-card__top">
+                        <span class="pk-eyebrow">RFQ Desk</span>
+                        <span class="pk-text-primary text-xs font-bold">&rarr;</span>
+                    </div>
+                    <span class="pk-shortcut-card__title" style="font-size: 18px;">Quotations</span>
+                    <p class="pk-shortcut-card__desc">Active price quotes &amp; RFQs</p>
+                </a>
+
+                <a href="{{ route('shop.customers.account.contracts.index') }}" class="pk-shortcut-card">
+                    <div class="pk-shortcut-card__top">
+                        <span class="pk-eyebrow">Agreements</span>
+                        @if ($pendingContracts > 0)
+                            <x-shop::portal.badge variant="pending" size="sm">{{ $pendingContracts }} pending</x-shop::portal.badge>
+                        @else
+                            <span class="pk-text-primary text-xs font-bold">&rarr;</span>
+                        @endif
+                    </div>
+                    <span class="pk-shortcut-card__title" style="font-size: 18px;">Contracts</span>
+                    <p class="pk-shortcut-card__desc">Master supply terms &amp; NDAs</p>
+                </a>
+
+                <a href="{{ route('shop.customers.account.buyer_verification.index') }}" class="pk-shortcut-card">
+                    <div class="pk-shortcut-card__top">
+                        <span class="pk-eyebrow">Compliance</span>
+                        @if ($isVerified)
+                            <x-shop::portal.badge variant="verified" size="sm">Tier 2</x-shop::portal.badge>
+                        @elseif ($verificationStatus === 'pending')
+                            <x-shop::portal.badge variant="pending" size="sm">Pending</x-shop::portal.badge>
+                        @else
+                            <x-shop::portal.badge variant="neutral" size="sm">Tier 1</x-shop::portal.badge>
+                        @endif
+                    </div>
+                    <span class="pk-shortcut-card__title" style="font-size: 18px;">Verification</span>
+                    <p class="pk-shortcut-card__desc">Commercial buyer status</p>
+                </a>
+
+                <a href="{{ route('shop.customers.account.conversations.index') }}" class="pk-shortcut-card">
+                    <div class="pk-shortcut-card__top">
+                        <span class="pk-eyebrow">Support</span>
+                        @if ($unreadCount > 0)
+                            <x-shop::portal.badge variant="counter" size="sm">{{ $unreadCount }} unread</x-shop::portal.badge>
+                        @else
+                            <span class="pk-text-primary text-xs font-bold">&rarr;</span>
+                        @endif
+                    </div>
+                    <span class="pk-shortcut-card__title" style="font-size: 18px;">Message Admin</span>
+                    <p class="pk-shortcut-card__desc">Direct Chicago desk thread</p>
+                </a>
+            </div>
+        @endif
+
+        <!-- Customer-Scoped Recently Viewed Products (Hydrated via localStorage) -->
+        @if ($workspaceCustomer)
+            <section id="pk-recent-section" class="pk-panel" hidden>
+                <div class="pk-panel__head" style="margin-bottom: 14px; padding-bottom: 10px;">
                     <div>
-                        <div class="flex items-center gap-2">
-                            <span class="h-2 w-2 rounded-full bg-emerald-600"></span>
-                            <span class="text-xs font-bold uppercase tracking-wider text-emerald-800">
-                                Commercial Catalog
-                            </span>
-                        </div>
-                        <h1 class="text-2xl sm:text-3xl font-extrabold text-[#0f4a3e] mt-1">
-                            Wholesale Product Catalog
-                        </h1>
-                        <p class="text-xs sm:text-sm text-[#5a6f68] mt-1">
-                            Browse verified botanical raw materials, extract specifications, and batch supply models.
-                        </p>
+                        <span class="pk-eyebrow">Quick Resume</span>
+                        <h2 class="pk-panel__title" style="font-size: 20px; margin-top: 2px;">Recently Viewed Specifications</h2>
                     </div>
-
-                    <div class="flex flex-wrap gap-2 text-xs">
-                        @if ($memberGroupName)
-                            <span class="rounded-full bg-[#f0f7f4] border border-[#d9e6e1] px-3 py-1 font-semibold text-[#0f4a3e]">
-                                Group: {{ $memberGroupName }}
-                            </span>
-                        @endif
-
-                        @if ($memberIsCompany)
-                            <span class="rounded-full bg-[#fefce8] border border-[#fef08a] px-3 py-1 font-bold text-[#854d0e]">
-                                Corporate Account
-                            </span>
-                        @endif
-                    </div>
+                    <button
+                        type="button"
+                        id="pk-recent-clear"
+                        class="pk-btn pk-btn--secondary pk-btn--sm"
+                    >
+                        Clear History
+                    </button>
                 </div>
 
-                <!-- Search & Category Filters -->
+                <div id="pk-recent-list" class="pk-recent-strip"></div>
+            </section>
+        @endif
+
+        <!-- Catalog Header & Search Toolbar -->
+        <x-shop::portal.page-header
+            eyebrow="Commercial Catalog"
+            title="Wholesale Product Catalog"
+            subtitle="Browse verified botanical powders, standardized extracts, MOQ schedules, and commercial supply documentation."
+        >
+            <x-slot:actions>
+                @if ($memberGroupName)
+                    <x-shop::portal.badge variant="info">Group: {{ $memberGroupName }}</x-shop::portal.badge>
+                @endif
+
+                @if ($memberIsCompany)
+                    <x-shop::portal.badge variant="earth">Corporate Account</x-shop::portal.badge>
+                @endif
+            </x-slot>
+
+            <x-slot:footer>
                 <form
                     method="GET"
                     action="{{ route('shop.customers.account.index') }}#catalog"
-                    class="mt-6 flex flex-wrap gap-3"
+                    class="pk-filter-bar"
                     role="search"
                 >
-                    <div class="flex-1 min-w-[240px]">
+                    <div class="pk-filter-bar__search">
                         <input
                             type="search"
                             name="query"
                             value="{{ $catalogSearch }}"
-                            placeholder="Search by botanical name, extract type, or SKU..."
-                            class="w-full rounded-xl border border-[#d9e6e1] bg-white px-4 py-2.5 text-sm text-[#1e2d29] focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 shadow-sm"
+                            placeholder="Search by botanical name, extract grade, or SKU..."
+                            aria-label="Search wholesale catalog"
+                            class="pk-input"
                             maxlength="100"
                         />
                     </div>
 
                     @if (count($catalogCategories))
-                        <div class="w-full sm:w-auto min-w-[200px]">
+                        <div class="pk-filter-bar__select">
                             <select
                                 name="category_id"
                                 aria-label="Filter by category"
-                                class="w-full rounded-xl border border-[#d9e6e1] bg-white px-4 py-2.5 text-sm text-[#1e2d29] focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600 shadow-sm"
+                                class="pk-select"
                             >
                                 <option value="">All Categories</option>
                                 @foreach ($catalogCategories as $category)
@@ -89,17 +208,15 @@
                         </div>
                     @endif
 
-                    <button
-                        type="submit"
-                        class="pk-btn pk-btn--primary py-2.5 px-6 text-xs font-bold"
-                    >
+                    <button type="submit" class="pk-btn pk-btn--primary" style="min-height: 44px;">
                         Search Catalog
                     </button>
 
                     @if ($catalogFiltered)
                         <a
                             href="{{ route('shop.customers.account.index') }}#catalog"
-                            class="pk-btn pk-btn--ghost py-2.5 px-4 text-xs font-semibold"
+                            class="pk-btn pk-btn--secondary"
+                            style="min-height: 44px;"
                         >
                             Reset Filters
                         </a>
@@ -107,133 +224,202 @@
                 </form>
 
                 @if ($catalogFiltered)
-                    <p class="mt-4 text-xs text-[#5a6f68]">
-                        Found <strong>{{ $catalogProducts->total() }}</strong> {{ \Illuminate\Support\Str::plural('product', $catalogProducts->total()) }} matching criteria.
+                    <p class="pk-help-text" style="margin-top: 12px;">
+                        Showing <strong>{{ $catalogProducts->total() }}</strong> {{ \Illuminate\Support\Str::plural('product', $catalogProducts->total()) }} matching active filters.
                     </p>
                 @endif
+            </x-slot>
+        </x-shop::portal.page-header>
+
+        <!-- Product Grid -->
+        @if (count($catalogCards))
+            <div class="pk-grid">
+                @foreach ($catalogCards as $card)
+                    @php
+                        $pricing = $card['pricing'] ?? null;
+                    @endphp
+
+                    <article class="pk-card">
+                        <a
+                            href="{{ $card['url'] }}"
+                            class="pk-card__media"
+                            tabindex="-1"
+                            aria-hidden="true"
+                        >
+                            @if (! empty($card['image']))
+                                <img
+                                    src="{{ $card['image'] }}"
+                                    alt="{{ $card['alt'] ?? $card['name'] }}"
+                                    loading="lazy"
+                                />
+                            @else
+                                <div class="pk-card__placeholder">
+                                    <span class="pk-eyebrow">PUR NATUREK</span>
+                                    <span class="text-xs font-semibold pk-text-primary" style="margin-top: 6px;">Botanical Specification</span>
+                                    <span class="text-[11px] pk-text-muted" style="margin-top: 2px;">Photography Pending</span>
+                                </div>
+                            @endif
+                        </a>
+
+                        <div class="pk-card__body">
+                            <span class="pk-card__sku">SKU // {{ $card['sku'] }}</span>
+
+                            <h2 class="pk-card__name">
+                                <a href="{{ $card['url'] }}">
+                                    {{ $card['name'] }}
+                                </a>
+                            </h2>
+
+                            @if ($pricing)
+                                <div class="pk-card__pricing-box">
+                                    <span class="pk-card__price-label">Indicative Wholesale Range</span>
+
+                                    @if (! empty($pricing['is_range']))
+                                        <span class="pk-card__price-val">{{ $pricing['price_display'] }}</span>
+                                    @else
+                                        <span class="pk-card__price-val pk-card__price-val--contact">{{ $pricing['price_display'] }}</span>
+                                    @endif
+                                </div>
+
+                                <div class="pk-card__pill-row">
+                                    @if (! empty($pricing['moq_display']))
+                                        <x-shop::portal.badge variant="earth" size="sm">
+                                            MOQ: {{ $pricing['moq_display'] }}
+                                        </x-shop::portal.badge>
+                                    @endif
+
+                                    @if (! empty($pricing['supply_availability']))
+                                        <x-shop::portal.badge variant="verified" size="sm">
+                                            {{ $pricing['supply_availability'] }}
+                                        </x-shop::portal.badge>
+                                    @endif
+                                </div>
+                            @endif
+
+                            @if (! empty($card['summary']))
+                                <p class="pk-card__summary">{{ $card['summary'] }}</p>
+                            @endif
+
+                            <div class="pk-card__cta">
+                                <a
+                                    href="{{ $card['url'] }}"
+                                    class="pk-btn pk-btn--secondary pk-btn--block"
+                                >
+                                    View Specifications &rarr;
+                                </a>
+                            </div>
+                        </div>
+                    </article>
+                @endforeach
             </div>
 
-            <!-- Product Grid -->
-            @if (count($catalogCards))
-                <div class="pk-grid">
-                    @foreach ($catalogCards as $card)
-                        @php
-                            $pricing = $card['pricing'] ?? null;
-                        @endphp
-
-                        <article class="pk-card">
-                            <!-- Card Media -->
-                            <a
-                                href="{{ $card['url'] }}"
-                                class="pk-card__media"
-                                tabindex="-1"
-                                aria-hidden="true"
-                            >
-                                @if (! empty($card['image']))
-                                    <img
-                                        src="{{ $card['image'] }}"
-                                        alt="{{ $card['alt'] ?? $card['name'] }}"
-                                        loading="lazy"
-                                    />
-                                @else
-                                    <div class="w-full h-full flex flex-col items-center justify-center p-4 text-center bg-gradient-to-b from-[#f0f7f4] to-[#e4efe9] text-[#5a6f68]">
-                                        <div class="h-10 w-10 rounded-full bg-emerald-800/10 flex items-center justify-center mb-1 text-emerald-800">
-                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                                        </div>
-                                        <span class="text-[11px] font-bold uppercase tracking-wider text-[#0f4a3e]">PurNatureK Botanical Extract</span>
-                                        <span class="text-[10px] text-zinc-400 mt-1">Pending Photography</span>
-                                    </div>
-                                @endif
-                            </a>
-
-                            <!-- Card Body -->
-                            <div class="pk-card__body">
-                                <div class="pk-card__header-line">
-                                    <span class="pk-card__sku">SKU: {{ $card['sku'] }}</span>
-                                </div>
-
-                                <h2 class="pk-card__name">
-                                    <a href="{{ $card['url'] }}">
-                                        {{ $card['name'] }}
-                                    </a>
-                                </h2>
-
-                                <!-- Wholesale Pricing Block -->
-                                @if ($pricing)
-                                    <div class="pk-card__pricing-box">
-                                        <span class="pk-card__price-label">Wholesale Price Model</span>
-
-                                        @if (! empty($pricing['is_range']))
-                                            <span class="pk-card__price-val">
-                                                {{ $pricing['price_display'] }}
-                                            </span>
-                                        @else
-                                            <span class="pk-card__price-val pk-card__price-val--contact">
-                                                {{ $pricing['price_display'] }}
-                                            </span>
-                                        @endif
-                                    </div>
-
-                                    <!-- Spec & Supply Badges -->
-                                    <div class="pk-card__pill-row">
-                                        @if (! empty($pricing['moq_display']))
-                                            <span class="pk-card__pill pk-card__pill--moq">
-                                                MOQ: {{ $pricing['moq_display'] }}
-                                            </span>
-                                        @endif
-
-                                        @if (! empty($pricing['supply_availability']))
-                                            <span class="pk-card__pill">
-                                                {{ $pricing['supply_availability'] }}
-                                            </span>
-                                        @endif
-                                    </div>
-                                @endif
-
-                                @if (! empty($card['summary']))
-                                    <p class="text-xs text-[#5a6f68] line-clamp-2 mt-1">
-                                        {{ $card['summary'] }}
-                                    </p>
-                                @endif
-
-                                <!-- CTA -->
-                                <div class="pk-card__cta">
-                                    <a
-                                        href="{{ $card['url'] }}"
-                                        class="pk-btn pk-btn--ghost text-xs font-bold"
-                                    >
-                                        View Product Specifications &rarr;
-                                    </a>
-                                </div>
-                            </div>
-                        </article>
-                    @endforeach
-                </div>
-
-                <!-- Pagination -->
-                @if ($catalogProducts->hasPages())
-                    <div class="bg-white border border-[#d9e6e1] rounded-xl p-4 flex justify-center shadow-sm">
-                        {{ $catalogProducts->links() }}
-                    </div>
-                @endif
-
-            @else
-                <!-- Empty State -->
-                <div class="bg-white border border-dashed border-[#d9e6e1] rounded-2xl p-12 text-center">
-                    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#f0f7f4] text-emerald-800 mb-3">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
-                    </div>
-                    <h3 class="text-base font-bold text-[#0f4a3e]">No wholesale products found</h3>
-                    <p class="text-xs text-[#5a6f68] mt-1 max-w-sm mx-auto">
-                        No items match your active search or category filters. Try clearing your filters or contact administration for custom sourcing inquiries.
-                    </p>
-                    <div class="mt-4">
-                        <a href="{{ route('shop.customers.account.index') }}#catalog" class="pk-btn pk-btn--primary text-xs py-2 px-4">
-                            Clear Filters
-                        </a>
-                    </div>
+            @if ($catalogProducts->hasPages())
+                <div class="pk-panel" style="padding: 14px 18px;">
+                    {{ $catalogProducts->links() }}
                 </div>
             @endif
-        </div>
+        @else
+            <x-shop::portal.empty-state
+                title="No wholesale products found"
+                description="No catalog entries match your active search or category criteria. Clear filters or message our commercial desk regarding custom sourcing requests."
+            >
+                <x-slot:actions>
+                    @if ($catalogFiltered)
+                        <x-shop::portal.button :href="route('shop.customers.account.index') . '#catalog'" variant="primary" size="sm">
+                            Clear Filters
+                        </x-shop::portal.button>
+                    @endif
+                    <x-shop::portal.button :href="route('shop.customers.account.conversations.create', ['category' => 'product_inquiry', 'subject' => 'Catalog Sourcing Inquiry'])" variant="secondary" size="sm">
+                        Message Commercial Desk
+                    </x-shop::portal.button>
+                </x-slot>
+            </x-shop::portal.empty-state>
+        @endif
     </div>
+
+    @if ($workspaceCustomer)
+        @push('scripts')
+            <script>
+                (function () {
+                    var storageKey = 'pk_recent_{{ (int) $workspaceCustomer->id }}';
+                    var section = document.getElementById('pk-recent-section');
+                    var list = document.getElementById('pk-recent-list');
+                    var clearBtn = document.getElementById('pk-recent-clear');
+                    if (!section || !list) return;
+
+                    function isSafeLocalUrl(url) {
+                        if (typeof url !== 'string' || !url) return false;
+                        return url.indexOf('/') === 0 || url.indexOf(window.location.origin + '/') === 0;
+                    }
+
+                    function renderRecent() {
+                        try {
+                            var raw = localStorage.getItem(storageKey);
+                            if (!raw) return;
+                            var items = JSON.parse(raw);
+                            if (!Array.isArray(items) || !items.length) return;
+
+                            list.textContent = '';
+                            var rendered = 0;
+
+                            items.slice(0, 4).forEach(function (item) {
+                                if (!item || !isSafeLocalUrl(item.url) || !item.name) return;
+
+                                var link = document.createElement('a');
+                                link.href = item.url;
+                                link.className = 'pk-recent-item';
+
+                                var thumb = document.createElement('div');
+                                thumb.className = 'pk-recent-item__thumb';
+
+                                if (item.image && isSafeLocalUrl(item.image)) {
+                                    var img = document.createElement('img');
+                                    img.src = item.image;
+                                    img.alt = item.name;
+                                    img.loading = 'lazy';
+                                    thumb.appendChild(img);
+                                } else {
+                                    thumb.textContent = 'SKU';
+                                }
+
+                                var meta = document.createElement('div');
+                                meta.style.minWidth = '0';
+
+                                var nameEl = document.createElement('div');
+                                nameEl.className = 'pk-recent-item__name';
+                                nameEl.textContent = item.name;
+
+                                var skuEl = document.createElement('div');
+                                skuEl.className = 'pk-recent-item__sku';
+                                skuEl.textContent = item.sku ? 'SKU: ' + item.sku : 'Specification';
+
+                                meta.appendChild(nameEl);
+                                meta.appendChild(skuEl);
+                                link.appendChild(thumb);
+                                link.appendChild(meta);
+                                list.appendChild(link);
+                                rendered++;
+                            });
+
+                            if (rendered > 0) {
+                                section.hidden = false;
+                            }
+                        } catch (e) {}
+                    }
+
+                    if (clearBtn) {
+                        clearBtn.addEventListener('click', function () {
+                            try {
+                                localStorage.removeItem(storageKey);
+                            } catch (e) {}
+                            list.textContent = '';
+                            section.hidden = true;
+                        });
+                    }
+
+                    renderRecent();
+                })();
+            </script>
+        @endpush
+    @endif
 </x-shop::layouts.account>

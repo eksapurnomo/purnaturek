@@ -4,6 +4,11 @@
     'hasFooter'  => true,
 ])
 
+@php
+    $themeCssPath = public_path('themes/shop/purnaturek/css/theme.css');
+    $themeCssVersion = is_file($themeCssPath) ? filemtime($themeCssPath) : '1';
+@endphp
+
 <!DOCTYPE html>
 <html
     lang="{{ app()->getLocale() }}"
@@ -30,39 +35,36 @@
             href="{{ core()->getCurrentChannel()->favicon_url ?? bagisto_asset('images/favicon.ico') }}"
         />
 
-        <!-- Bagisto Precompiled Baseline (Vue 3, VeeValidate, Axios, Tailwind utilities) -->
-        @bagistoVite(['src/Resources/assets/css/app.css', 'src/Resources/assets/js/app.js'])
-
-        <!-- PurNatureK Theme Stylesheet -->
-        <link rel="stylesheet" href="{{ asset('themes/shop/purnaturek/css/theme.css') }}">
-
-        <!-- Web Fonts -->
-        <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
+        <!-- Web Fonts (Cormorant Garamond, Plus Jakarta Sans, JetBrains Mono) -->
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
         <link
             rel="stylesheet"
-            href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap"
+            href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap"
         />
+
+        <!-- Bagisto Precompiled Baseline (Vue 3, VeeValidate, Axios) -->
+        @bagistoVite(['src/Resources/assets/css/app.css', 'src/Resources/assets/js/app.js'])
+
+        <!-- PurNatureK Modern Botanical Trade Design System -->
+        <link
+            rel="stylesheet"
+            href="{{ asset('themes/shop/purnaturek/css/theme.css') }}?v={{ $themeCssVersion }}"
+        >
 
         @stack('styles')
 
-        <style>
-            body {
-                font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            }
-            code, pre, .font-mono {
-                font-family: 'JetBrains Mono', monospace;
-            }
-            {!! core()->getConfigData('general.content.custom_scripts.custom_css') !!}
-        </style>
+        @if ($customCss = core()->getConfigData('general.content.custom_scripts.custom_css'))
+            <style>{!! $customCss !!}</style>
+        @endif
 
         {!! view_render_event('bagisto.shop.layout.head.after') !!}
     </head>
 
-    <body class="bg-[#f7faf8] text-[#1e2d29] min-h-screen flex flex-col">
+    <body style="background-color: #F7F4EC; color: #132A1F;" class="min-h-screen flex flex-col">
         {!! view_render_event('bagisto.shop.layout.body.before') !!}
 
-        <a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-4 focus:left-4 focus:z-50 focus:bg-emerald-800 focus:text-white focus:px-4 focus:py-2 focus:rounded-md">
+        <a href="#main" class="pk-skip-link">
             Skip to main content
         </a>
 
@@ -83,24 +85,84 @@
                 {{ $slot }}
             </main>
 
-            <!-- B2B Wholesale Portal Footer -->
+            <!-- Unified PurNatureK Wholesale Footer -->
             @if ($hasFooter)
-                <footer class="mt-auto border-t border-[#d9e6e1] bg-white py-8 text-xs text-[#5a6f68]">
-                    <div class="max-w-[1360px] mx-auto px-6 flex flex-col md:flex-row items-center justify-between gap-4">
-                        <div class="flex items-center gap-3">
-                            <span class="font-extrabold text-sm text-[#0f4a3e]">PurNatureK</span>
-                            <span class="text-[#8a9893]">|</span>
-                            <span>Wholesale Members Portal</span>
-                            <span class="rounded-full bg-[#fef9c3] px-2.5 py-0.5 text-[10px] font-bold text-[#854d0e] border border-[#fef08a]">
-                                Authorized Commercial Accounts Only
-                            </span>
+                <footer class="pk-footer">
+                    <div class="pk-footer__inner">
+                        <div class="pk-footer__grid">
+                            <div>
+                                <a href="{{ route('shop.home.index') }}" aria-label="PurNatureK Members Portal" style="display:inline-block;">
+                                    <img
+                                        src="{{ asset('themes/shop/purnaturek/images/logo-purnaturek-on-dark.webp') }}"
+                                        alt="PUR NATUREK"
+                                        class="pk-footer__logo"
+                                        width="180"
+                                        height="44"
+                                        loading="lazy"
+                                    />
+                                </a>
+                                <p class="pk-footer__tagline">
+                                    Your US-Based Wholesale Partner for Mitragyna speciosa Powder &amp; Extract. Private member portal for vetted commercial accounts, bulk procurement, and compliance documentation.
+                                </p>
+                            </div>
+
+                            <div>
+                                <p class="pk-footer__heading">Commercial Desk</p>
+                                <ul class="pk-footer__list">
+                                    <li><strong>Purnature Khatulistiwa LLC</strong></li>
+                                    <li>505 N Lake Shore Dr, Suite 3404<br>Chicago, IL 60611, USA</li>
+                                    <li>
+                                        <a href="tel:+17734256646" class="pk-footer__link">+1 (773) 425-6646</a>
+                                    </li>
+                                    <li>
+                                        <a href="mailto:wholesale@purnaturek.com" class="pk-footer__link">wholesale@purnaturek.com</a>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div>
+                                <p class="pk-footer__heading">Portal &amp; Corporate</p>
+                                <ul class="pk-footer__list">
+                                    @auth('customer')
+                                        <li>
+                                            <a href="{{ route('shop.customers.account.index') }}" class="pk-footer__link">Member Workspace</a>
+                                        </li>
+                                        <li>
+                                            <a href="{{ route('shop.customers.account.buyer_verification.index') }}" class="pk-footer__link">Buyer Verification</a>
+                                        </li>
+                                        <li>
+                                            <a href="{{ route('shop.customers.account.conversations.index') }}" class="pk-footer__link">Message Admin</a>
+                                        </li>
+                                    @else
+                                        <li>
+                                            <a href="{{ route('shop.customer.session.index') }}" class="pk-footer__link">Member Sign In</a>
+                                        </li>
+                                        <li>
+                                            <a href="{{ route('shop.customers.register.index') }}" class="pk-footer__link">Apply for Wholesale</a>
+                                        </li>
+                                    @endauth
+                                    <li>
+                                        <a href="https://purnaturekbulk.com/" target="_blank" rel="noopener noreferrer" class="pk-footer__link">
+                                            Corporate Website (purnaturekbulk.com) &rarr;
+                                        </a>
+                                    </li>
+                                </ul>
+                            </div>
                         </div>
 
-                        <div class="flex items-center gap-6">
-                            <span>&copy; {{ date('Y') }} PurNatureK Khatulistiwa Bulk & Wholesale. All rights reserved.</span>
-                            <a href="https://purnaturekbulk.com" target="_blank" rel="noopener noreferrer" class="hover:text-[#0f4a3e] font-semibold underline decoration-dotted">
-                                Corporate Website &rarr;
-                            </a>
+                        @php
+                            $configuredCopyright = trim((string) core()->getConfigData('general.content.footer.copyright_content'));
+                        @endphp
+
+                        <div class="pk-footer__bottom">
+                            <span>
+                                @if ($configuredCopyright !== '')
+                                    {!! clean_content($configuredCopyright) !!}
+                                @else
+                                    &copy; {{ date('Y') }} Purnature Khatulistiwa LLC. All rights reserved.
+                                @endif
+                            </span>
+                            <span>Authorized Commercial Accounts Only &bull; Age restricted. 21+ only.</span>
                         </div>
                     </div>
                 </footer>
@@ -111,8 +173,7 @@
 
         {!! view_render_event('bagisto.shop.layout.body.after') !!}
 
-        <!-- PurNatureK Wholesale AI Assistant Widget (Client title: "Assistant") -->
+        <!-- PurNatureK Wholesale AI Assistant Widget -->
         <script src="{{ asset('ai-assistant/widget.js') }}" async></script>
     </body>
 </html>
-

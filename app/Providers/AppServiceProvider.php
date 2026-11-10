@@ -258,7 +258,13 @@ class AppServiceProvider extends ServiceProvider
                 [
                     'key'   => 'configuration.ai_assistant',
                     'name'  => 'AI Assistant',
-                    'route' => 'admin.ai_assistant.index',
+                    'route' => [
+                        'admin.ai_assistant.index',
+                        'admin.ai_assistant.update',
+                        'admin.ai_assistant.test_prompt',
+                        'admin.ai_assistant.logs.delete',
+                        'admin.ai_assistant.logs.clear',
+                    ],
                     'sort'  => 2,
                 ],
             ]),
@@ -273,52 +279,55 @@ class AppServiceProvider extends ServiceProvider
             $router->pushMiddlewareToGroup('shop', ProtectPrivateCatalog::class);
 
             $routes = Route::getRoutes();
-            $routes->refreshNameLookups();
 
             /**
              * Ensure specific AI Assistant and Magic AI configuration routes take precedence over
-             * Bagisto's wildcard route `admin/configuration/{slug?}/{slug2?}`.
+             * Bagisto's wildcard route `admin/configuration/{slug?}/{slug2?}` in both uncached
+             * RouteCollection matching and compiled route caching (`php artisan route:cache`).
              */
-            try {
-                $refProp = new \ReflectionProperty($routes, 'routes');
-                $refProp->setAccessible(true);
-                $all = $refProp->getValue($routes);
+            if ($routes instanceof \Illuminate\Routing\RouteCollection) {
+                $wildcardUri = 'admin/configuration/{slug?}/{slug2?}';
+                $priorityUris = [
+                    'admin/configuration/magic_ai/general',
+                    'admin/configuration/ai-assistant',
+                ];
 
-                foreach (['GET', 'POST', 'HEAD'] as $method) {
-                    if (! isset($all[$method])) {
-                        continue;
-                    }
+                $before = [];
+                $target = [];
+                $after = [];
+                $passedWildcard = false;
 
-                    $methodRoutes = $all[$method];
-                    $wildcardKey = 'admin/configuration/{slug?}/{slug2?}';
+                foreach ($routes->getRoutes() as $route) {
+                    $uri = $route->uri();
 
-                    if (isset($methodRoutes[$wildcardKey])) {
-                        $before = [];
-                        $target = [];
-                        $after = [];
-                        $passedWildcard = false;
-
-                        foreach ($methodRoutes as $k => $r) {
-                            if ($k === 'admin/configuration/ai-assistant' || $k === 'admin/configuration/magic_ai/general' || str_starts_with($k, 'admin/configuration/ai-assistant/')) {
-                                $target[$k] = $r;
-                            } elseif ($k === $wildcardKey) {
-                                $passedWildcard = true;
-                                $after[$k] = $r;
-                            } elseif ($passedWildcard) {
-                                $after[$k] = $r;
-                            } else {
-                                $before[$k] = $r;
-                            }
-                        }
-
-                        $all[$method] = array_merge($before, $target, $after);
+                    if (
+                        in_array($uri, $priorityUris, true)
+                        || str_starts_with($uri, 'admin/configuration/ai-assistant/')
+                    ) {
+                        $target[] = $route;
+                    } elseif ($uri === $wildcardUri) {
+                        $passedWildcard = true;
+                        $after[] = $route;
+                    } elseif ($passedWildcard) {
+                        $after[] = $route;
+                    } else {
+                        $before[] = $route;
                     }
                 }
 
-                $refProp->setValue($routes, $all);
-            } catch (\Throwable $e) {
-                // Fallback silently if reflection fails
+                if ($passedWildcard && ! empty($target)) {
+                    $reordered = new \Illuminate\Routing\RouteCollection();
+
+                    foreach (array_merge($before, $target, $after) as $route) {
+                        $reordered->add($route);
+                    }
+
+                    $router->setRoutes($reordered);
+                    $routes = $reordered;
+                }
             }
+
+            $routes->refreshNameLookups();
 
             foreach (ProtectPrivateCatalog::PROTECTED_ROUTES as $routeName) {
                 $route = $routes->getByName($routeName);

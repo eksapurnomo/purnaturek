@@ -20,7 +20,7 @@
         welcome_message: 'Welcome to PurNatureK Bulk & Wholesale. How can I help your business today?',
         placeholder: 'Ask about botanical extracts, specifications, MOQs...',
         position: 'bottom-right',
-        theme_color: '#0f4a3e',
+        theme_color: '#1B3B2B',
         auto_open: false,
         faqs: []
     };
@@ -136,12 +136,13 @@
         }
     }
 
-    // Inject Styles
+    // Inject Styles (Aligned with Modern Botanical Trade Design System)
     function injectStyles() {
         if (document.getElementById('pnk-ai-assistant-styles')) return;
 
         const posRight = config.position === 'bottom-left' ? 'left: 24px;' : 'right: 24px;';
-        const brandColor = config.theme_color || '#0f4a3e';
+        const rawColor = (config.theme_color || '').trim();
+        const brandColor = (!rawColor || rawColor.toLowerCase() === '#0f4a3e') ? '#1B3B2B' : rawColor;
 
         const style = document.createElement('style');
         style.id = 'pnk-ai-assistant-styles';
@@ -152,8 +153,8 @@
                 bottom: 24px;
                 ${posRight}
                 z-index: 999990;
-                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-                color: #1e293b;
+                font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                color: #132A1F;
                 box-sizing: border-box;
             }
             .pnk-ai-widget-root * {
@@ -162,32 +163,32 @@
 
             /* Launcher Button */
             .pnk-ai-launcher {
-                width: 60px;
-                height: 60px;
+                width: 58px;
+                height: 58px;
                 border-radius: 50%;
                 background-color: ${brandColor};
-                color: #ffffff;
-                box-shadow: 0 10px 25px -5px rgba(15, 74, 62, 0.4), 0 8px 10px -6px rgba(15, 74, 62, 0.3);
-                border: 2px solid rgba(255, 255, 255, 0.2);
+                color: #F7F4EC;
+                box-shadow: 0 12px 28px -6px rgba(12, 26, 19, 0.45), 0 4px 10px -2px rgba(12, 26, 19, 0.25);
+                border: 1.5px solid rgba(194, 164, 119, 0.65);
                 cursor: pointer;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+                transition: transform 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
                 position: relative;
                 outline: none;
             }
             .pnk-ai-launcher:hover {
-                transform: scale(1.06);
-                box-shadow: 0 14px 28px -4px rgba(15, 74, 62, 0.5);
-                background-color: #155e4f;
+                transform: translateY(-2px);
+                box-shadow: 0 16px 32px -6px rgba(12, 26, 19, 0.55);
+                background-color: #264E3A;
             }
             .pnk-ai-launcher:active {
                 transform: scale(0.96);
             }
             .pnk-ai-launcher-icon,
             .pnk-ai-launcher-close {
-                transition: transform 0.25s ease, opacity 0.25s ease;
+                transition: transform 0.2s ease, opacity 0.2s ease;
                 display: flex;
                 align-items: center;
                 justify-content: center;
@@ -204,34 +205,34 @@
                 position: absolute;
                 top: 2px;
                 right: 2px;
-                width: 14px;
-                height: 14px;
-                background-color: #10b981;
-                border: 2px solid #ffffff;
+                width: 13px;
+                height: 13px;
+                background-color: #C2A477;
+                border: 2px solid #FCFBF8;
                 border-radius: 50%;
             }
 
             /* Chat Window Container */
             .pnk-ai-chat-window {
                 position: absolute;
-                bottom: 74px;
+                bottom: 72px;
                 ${config.position === 'bottom-left' ? 'left: 0;' : 'right: 0;'}
-                width: 390px;
+                width: 392px;
                 max-width: calc(100vw - 32px);
                 height: 580px;
                 max-height: calc(100vh - 110px);
-                background-color: #ffffff;
-                border-radius: 16px;
-                box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.18), 0 1px 3px rgba(0, 0, 0, 0.08);
-                border: 1px solid #e2e8f0;
+                background-color: #FCFBF8;
+                border-radius: 4px;
+                box-shadow: 0 24px 54px -12px rgba(12, 26, 19, 0.26), 0 2px 6px rgba(19, 42, 31, 0.08);
+                border: 1px solid #E4DDD0;
                 display: flex;
                 flex-direction: column;
                 overflow: hidden;
                 transform-origin: bottom ${config.position === 'bottom-left' ? 'left' : 'right'};
-                transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.25s ease, visibility 0.25s;
+                transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.22s ease, visibility 0.22s;
                 opacity: 0;
                 visibility: hidden;
-                transform: scale(0.85) translateY(20px);
+                transform: scale(0.92) translateY(16px);
             }
             .pnk-ai-chat-window.active {
                 opacity: 1;
@@ -241,13 +242,13 @@
 
             /* Window Header */
             .pnk-ai-header {
-                background: linear-gradient(135deg, ${brandColor} 0%, #155e4f 100%);
-                color: #ffffff;
-                padding: 16px 18px;
+                background: linear-gradient(135deg, #0C1A13 0%, ${brandColor} 100%);
+                color: #F7F4EC;
+                padding: 15px 18px;
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
-                box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+                border-bottom: 1px solid rgba(194, 164, 119, 0.32);
             }
             .pnk-ai-header-left {
                 display: flex;
@@ -255,34 +256,40 @@
                 gap: 12px;
             }
             .pnk-ai-header-avatar {
-                width: 38px;
-                height: 38px;
-                border-radius: 50%;
-                background-color: rgba(255, 255, 255, 0.16);
+                width: 36px;
+                height: 36px;
+                border-radius: 4px;
+                background-color: rgba(247, 244, 236, 0.1);
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                border: 1px solid rgba(255, 255, 255, 0.25);
+                border: 1px solid rgba(194, 164, 119, 0.45);
+                color: #C2A477;
             }
             .pnk-ai-header-title {
-                font-size: 16px;
-                font-weight: 700;
-                line-height: 1.2;
-                letter-spacing: -0.01em;
+                font-family: 'Cormorant Garamond', Georgia, serif;
+                font-size: 21px;
+                font-weight: 600;
+                line-height: 1.05;
+                letter-spacing: 0.01em;
+                color: #FFFFFF;
             }
             .pnk-ai-header-subtitle {
-                font-size: 11px;
-                color: rgba(255, 255, 255, 0.82);
+                font-family: 'JetBrains Mono', ui-monospace, monospace;
+                font-size: 10px;
+                letter-spacing: 0.08em;
+                text-transform: uppercase;
+                color: rgba(247, 244, 236, 0.78);
                 display: flex;
                 align-items: center;
-                gap: 5px;
-                margin-top: 2px;
+                gap: 6px;
+                margin-top: 3px;
             }
             .pnk-ai-header-dot {
-                width: 7px;
-                height: 7px;
+                width: 6px;
+                height: 6px;
                 border-radius: 50%;
-                background-color: #34d399;
+                background-color: #C2A477;
             }
             .pnk-ai-header-actions {
                 display: flex;
@@ -291,19 +298,20 @@
             }
             .pnk-ai-icon-btn {
                 background: transparent;
-                border: none;
-                color: rgba(255, 255, 255, 0.85);
+                border: 1px solid transparent;
+                color: rgba(247, 244, 236, 0.85);
                 cursor: pointer;
                 padding: 6px;
-                border-radius: 6px;
+                border-radius: 2px;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                transition: background-color 0.15s ease;
+                transition: background-color 0.15s ease, border-color 0.15s ease;
             }
             .pnk-ai-icon-btn:hover {
-                background-color: rgba(255, 255, 255, 0.16);
-                color: #ffffff;
+                background-color: rgba(255, 255, 255, 0.12);
+                border-color: rgba(194, 164, 119, 0.3);
+                color: #FFFFFF;
             }
 
             /* Messages Area */
@@ -311,7 +319,7 @@
                 flex: 1;
                 overflow-y: auto;
                 padding: 18px 16px;
-                background-color: #f8fafc;
+                background-color: #F7F4EC;
                 display: flex;
                 flex-direction: column;
                 gap: 14px;
@@ -321,8 +329,8 @@
                 width: 5px;
             }
             .pnk-ai-body::-webkit-scrollbar-thumb {
-                background: #cbd5e1;
-                border-radius: 3px;
+                background: #D2C8B6;
+                border-radius: 2px;
             }
 
             /* FAQ Chips Container */
@@ -331,11 +339,12 @@
                 margin-bottom: 6px;
             }
             .pnk-ai-faqs-title {
-                font-size: 11px;
-                font-weight: 700;
+                font-family: 'JetBrains Mono', ui-monospace, monospace;
+                font-size: 10px;
+                font-weight: 600;
                 text-transform: uppercase;
-                letter-spacing: 0.05em;
-                color: #64748b;
+                letter-spacing: 0.12em;
+                color: #8C6D46;
                 margin-bottom: 8px;
             }
             .pnk-ai-faqs-chips {
@@ -344,13 +353,14 @@
                 gap: 6px;
             }
             .pnk-ai-faq-chip {
-                background-color: #ffffff;
-                border: 1px solid #e2e8f0;
-                border-radius: 8px;
-                padding: 8px 12px;
-                font-size: 12px;
+                background-color: #FCFBF8;
+                border: 1px solid #E4DDD0;
+                border-radius: 4px;
+                padding: 9px 12px;
+                font-family: inherit;
+                font-size: 12.5px;
                 font-weight: 500;
-                color: #1e293b;
+                color: #132A1F;
                 cursor: pointer;
                 text-align: left;
                 transition: all 0.15s ease;
@@ -361,13 +371,13 @@
             }
             .pnk-ai-faq-chip:hover {
                 border-color: ${brandColor};
-                background-color: #f0fdf4;
+                background-color: #EFEADF;
                 color: ${brandColor};
                 transform: translateX(2px);
             }
             .pnk-ai-faq-chip svg {
                 flex-shrink: 0;
-                opacity: 0.5;
+                opacity: 0.55;
             }
             .pnk-ai-faq-chip:hover svg {
                 opacity: 1;
@@ -378,7 +388,7 @@
             .pnk-ai-msg-row {
                 display: flex;
                 flex-direction: column;
-                max-width: 86%;
+                max-width: 88%;
             }
             .pnk-ai-msg-row.user {
                 align-self: flex-end;
@@ -389,27 +399,29 @@
                 align-items: flex-start;
             }
             .pnk-ai-msg-bubble {
-                padding: 11px 15px;
-                border-radius: 14px;
+                padding: 11px 14px;
+                border-radius: 4px;
                 font-size: 13.5px;
-                line-height: 1.5;
+                line-height: 1.55;
                 word-break: break-word;
             }
             .pnk-ai-msg-row.user .pnk-ai-msg-bubble {
                 background-color: ${brandColor};
-                color: #ffffff;
-                border-bottom-right-radius: 4px;
+                color: #F7F4EC;
+                border: 1px solid ${brandColor};
             }
             .pnk-ai-msg-row.assistant .pnk-ai-msg-bubble {
-                background-color: #ffffff;
-                color: #1e293b;
-                border: 1px solid #e2e8f0;
-                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
-                border-bottom-left-radius: 4px;
+                background-color: #FCFBF8;
+                color: #132A1F;
+                border: 1px solid #E4DDD0;
+                box-shadow: 0 1px 3px rgba(19, 42, 31, 0.05);
             }
             .pnk-ai-msg-time {
-                font-size: 10px;
-                color: #94a3b8;
+                font-family: 'JetBrains Mono', ui-monospace, monospace;
+                font-size: 9.5px;
+                text-transform: uppercase;
+                letter-spacing: 0.06em;
+                color: #7A827C;
                 margin-top: 4px;
                 padding: 0 2px;
             }
@@ -417,29 +429,31 @@
             /* Gated Price Notice */
             .pnk-ai-gated-box {
                 margin-top: 10px;
-                background-color: #fefce8;
-                border: 1px solid #fef08a;
-                border-radius: 10px;
+                background-color: #FBF4E4;
+                border: 1px solid #E5CFA0;
+                border-radius: 4px;
                 padding: 12px;
-                color: #854d0e;
+                color: #785216;
                 font-size: 12px;
+                line-height: 1.5;
             }
             .pnk-ai-gated-header {
                 font-weight: 700;
                 display: flex;
                 align-items: center;
                 gap: 6px;
-                margin-bottom: 6px;
-                color: #713f12;
+                margin-bottom: 5px;
+                color: #6F5432;
             }
             .pnk-ai-gated-actions {
                 display: flex;
+                flex-wrap: wrap;
                 gap: 8px;
                 margin-top: 10px;
             }
             .pnk-ai-btn-sm {
-                padding: 5px 10px;
-                border-radius: 6px;
+                padding: 6px 12px;
+                border-radius: 2px;
                 font-size: 11.5px;
                 font-weight: 600;
                 text-decoration: none;
@@ -450,18 +464,20 @@
             }
             .pnk-ai-btn-primary {
                 background-color: ${brandColor};
-                color: #ffffff;
+                border: 1px solid ${brandColor};
+                color: #FFFFFF;
             }
             .pnk-ai-btn-primary:hover {
-                background-color: #155e4f;
+                background-color: #264E3A;
+                border-color: #264E3A;
             }
             .pnk-ai-btn-secondary {
-                background-color: #ffffff;
-                border: 1px solid #d1d5db;
-                color: #374151;
+                background-color: #FCFBF8;
+                border: 1px solid rgba(27, 59, 43, 0.25);
+                color: ${brandColor};
             }
             .pnk-ai-btn-secondary:hover {
-                background-color: #f3f4f6;
+                background-color: #EFEADF;
             }
 
             /* Typing Indicator */
@@ -469,17 +485,16 @@
                 display: flex;
                 align-items: center;
                 gap: 4px;
-                padding: 10px 14px;
-                background-color: #ffffff;
-                border: 1px solid #e2e8f0;
-                border-radius: 14px;
-                border-bottom-left-radius: 4px;
+                padding: 11px 14px;
+                background-color: #FCFBF8;
+                border: 1px solid #E4DDD0;
+                border-radius: 4px;
                 width: fit-content;
             }
             .pnk-ai-dot {
-                width: 7px;
-                height: 7px;
-                background-color: #94a3b8;
+                width: 6px;
+                height: 6px;
+                background-color: #8C6D46;
                 border-radius: 50%;
                 animation: pnkAiBounce 1.4s infinite ease-in-out both;
             }
@@ -493,61 +508,64 @@
             /* Input Area */
             .pnk-ai-footer {
                 padding: 12px 14px;
-                background-color: #ffffff;
-                border-top: 1px solid #e2e8f0;
+                background-color: #FCFBF8;
+                border-top: 1px solid #E4DDD0;
             }
             .pnk-ai-input-form {
                 display: flex;
                 align-items: center;
                 gap: 8px;
-                background-color: #f8fafc;
-                border: 1px solid #cbd5e1;
-                border-radius: 24px;
-                padding: 6px 6px 6px 14px;
+                background-color: #FFFFFF;
+                border: 1px solid rgba(27, 59, 43, 0.22);
+                border-radius: 4px;
+                padding: 5px 6px 5px 12px;
                 transition: border-color 0.15s ease, box-shadow 0.15s ease;
             }
             .pnk-ai-input-form:focus-within {
                 border-color: ${brandColor};
-                background-color: #ffffff;
-                box-shadow: 0 0 0 3px rgba(15, 74, 62, 0.12);
+                box-shadow: 0 0 0 2px rgba(27, 59, 43, 0.12);
             }
             .pnk-ai-input {
                 flex: 1;
+                min-width: 0;
                 border: none;
                 background: transparent;
+                font-family: inherit;
                 font-size: 13.5px;
-                color: #1e293b;
+                color: #132A1F;
                 outline: none;
-                padding: 4px 0;
+                padding: 5px 0;
             }
             .pnk-ai-input::placeholder {
-                color: #94a3b8;
+                color: #7A827C;
             }
             .pnk-ai-send-btn {
                 width: 34px;
                 height: 34px;
-                border-radius: 50%;
+                border-radius: 2px;
                 background-color: ${brandColor};
-                color: #ffffff;
+                color: #FFFFFF;
                 border: none;
                 cursor: pointer;
                 display: flex;
                 align-items: center;
                 justify-content: center;
-                transition: all 0.15s ease;
+                transition: background-color 0.15s ease;
                 flex-shrink: 0;
             }
             .pnk-ai-send-btn:disabled {
-                background-color: #cbd5e1;
+                background-color: #D2C8B6;
                 cursor: not-allowed;
             }
             .pnk-ai-send-btn:not(:disabled):hover {
-                background-color: #155e4f;
-                transform: scale(1.05);
+                background-color: #264E3A;
             }
             .pnk-ai-footer-note {
-                font-size: 10px;
-                color: #94a3b8;
+                font-family: 'JetBrains Mono', ui-monospace, monospace;
+                font-size: 9.5px;
+                letter-spacing: 0.06em;
+                text-transform: uppercase;
+                color: #7A827C;
                 text-align: center;
                 margin-top: 8px;
             }
@@ -566,7 +584,7 @@
             }
             .pnk-ai-bullet, .pnk-ai-num {
                 font-weight: 700;
-                color: ${brandColor};
+                color: #8C6D46;
             }
             .pnk-ai-p-gap {
                 height: 8px;
@@ -574,12 +592,16 @@
 
             /* Mobile view adjustments */
             @media (max-width: 480px) {
+                .pnk-ai-widget-root {
+                    ${config.position === 'bottom-left' ? 'left: 12px;' : 'right: 12px;'}
+                    bottom: 16px;
+                }
                 .pnk-ai-chat-window {
-                    width: calc(100vw - 20px);
-                    right: -14px;
-                    bottom: 70px;
-                    height: calc(100vh - 90px);
-                    border-radius: 14px;
+                    width: calc(100vw - 24px);
+                    ${config.position === 'bottom-left' ? 'left: 0;' : 'right: 0;'}
+                    bottom: 68px;
+                    height: calc(100vh - 92px);
+                    border-radius: 4px;
                 }
             }
         `;

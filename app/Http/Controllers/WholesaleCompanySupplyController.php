@@ -26,7 +26,7 @@ class WholesaleCompanySupplyController extends Controller
                 ->get()
             : collect([]);
 
-        return view('vendor.shop.customers.account.company_supply.index', compact('page', 'sections', 'isPublished'));
+        return view('shop::customers.account.company_supply.index', compact('page', 'sections', 'isPublished'));
     }
 }
 

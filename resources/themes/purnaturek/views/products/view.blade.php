@@ -1,5 +1,5 @@
 {{--
-    PurNatureK Members Portal — Private Product Detail View
+    PurNatureK Members Portal — Private Product Detail View (PDP)
     resources/themes/purnaturek/views/products/view.blade.php
 --}}
 @inject('productViewHelper', 'Webkul\Product\Helpers\View')
@@ -21,6 +21,9 @@
     $specs = \App\Support\ProductDocumentationManager::getProductSpecifications($product);
     $groupedDocuments = \App\Support\ProductDocumentationManager::getGroupedProductDocuments($product->id);
     $hasAnyDocuments = collect($groupedDocuments)->pluck('documents')->flatten(1)->isNotEmpty();
+
+    $mainImageSrc = $baseImage['large_image_url'] ?? ($baseImage['medium_image_url'] ?? null);
+    $recentThumb = $baseImage['small_image_url'] ?? ($baseImage['medium_image_url'] ?? null);
 @endphp
 
 <x-shop::layouts.account>
@@ -28,187 +31,171 @@
         {{ $product->name }} — PurNatureK Members Portal
     </x-slot>
 
-    <x-shop::layouts.account.navigation />
+    <div class="max-md:hidden">
+        <x-shop::layouts.account.navigation />
+    </div>
 
-    <section
-        class="pk-main pk-product"
-        v-pre
-    >
-        <!-- Breadcrumb / Back Navigation -->
-        <nav class="pk-product__breadcrumb mb-4" aria-label="Breadcrumb">
-            <a
-                href="{{ route('shop.customers.account.index') }}#catalog"
-                class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950 hover:underline transition"
-            >
-                &larr; Back to Wholesale Product Catalog
+    <section class="pk-product pk-stack-md" v-pre>
+        <!-- Breadcrumb Navigation -->
+        <nav class="pk-product__breadcrumb" aria-label="Breadcrumb">
+            <a href="{{ route('shop.customers.account.index') }}#catalog" class="pk-product__back">
+                &larr; Wholesale Product Catalog
             </a>
+            <span aria-hidden="true">/</span>
+            <span class="pk-mono text-xs">{{ $product->sku }}</span>
         </nav>
 
-        <!-- Product Hero: Gallery + Wholesale Pricing & Terms -->
-        <div class="pk-product__hero pk-card p-6 md:p-8">
-            <!-- Media Column -->
-            <div class="pk-product__media">
-                <div class="pk-product__image-main aspect-[4/3] rounded-xl overflow-hidden border border-[#d9e6e1] bg-[#f0f7f4]">
-                    @if (! empty($baseImage['large_image_url']) || ! empty($baseImage['medium_image_url']))
+        <!-- Editorial Product Hero -->
+        <div class="pk-product__hero">
+            <!-- Gallery Column -->
+            <div>
+                <div class="pk-product__image-main">
+                    @if ($mainImageSrc)
                         <img
-                            src="{{ $baseImage['large_image_url'] ?? $baseImage['medium_image_url'] }}"
+                            id="pk-pdp-main-img"
+                            src="{{ $mainImageSrc }}"
                             alt="{{ $product->name }}"
-                            class="w-full h-full object-cover"
                         >
                     @else
-                        <!-- Neutral Branded Botanical Placeholder -->
-                        <div class="w-full h-full flex flex-col items-center justify-center p-6 text-center bg-gradient-to-b from-[#f0f7f4] to-[#e4efe9]">
-                            <div class="h-14 w-14 rounded-full bg-emerald-800/10 flex items-center justify-center mb-2.5 text-emerald-800">
-                                <svg class="h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.8" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253"/></svg>
-                            </div>
-                            <span class="text-xs font-bold uppercase tracking-wider text-[#0f4a3e]">PurNatureK Botanical Extract</span>
-                            <span class="text-[11px] font-mono text-[#5a6f68] mt-0.5">SKU: {{ $product->sku }}</span>
-                            <span class="text-[10px] text-zinc-400 mt-2">Specification Photography Pending</span>
+                        <div class="pk-card__placeholder" style="min-height: 280px;">
+                            <span class="pk-eyebrow">PUR NATUREK</span>
+                            <span class="pk-serif" style="font-size: 22px; font-weight: 600; color: var(--pk-primary); margin-top: 8px;">
+                                {{ $product->name }}
+                            </span>
+                            <span class="pk-mono text-xs pk-text-muted" style="margin-top: 6px;">SKU: {{ $product->sku }}</span>
+                            <span class="text-[11px] pk-text-muted" style="margin-top: 10px;">Specification Photography Pending</span>
                         </div>
                     @endif
                 </div>
 
-                @if (count($galleryImages) > 1)
-                    <div class="pk-product__thumbs flex flex-wrap gap-2 mt-3">
-                        @foreach ($galleryImages as $img)
-                            @if (! empty($img['small_image_url']))
-                                <a
-                                    href="{{ $img['large_image_url'] ?? $img['medium_image_url'] }}"
-                                    target="_blank"
-                                    rel="noopener"
-                                    class="h-16 w-16 rounded-lg border border-[#d9e6e1] overflow-hidden hover:border-emerald-600 transition"
+                @if (count($galleryImages) > 1 && $mainImageSrc)
+                    <div class="pk-product__thumbs" role="list" aria-label="Product gallery thumbnails">
+                        @foreach ($galleryImages as $idx => $img)
+                            @php
+                                $largeUrl = $img['large_image_url'] ?? ($img['medium_image_url'] ?? '');
+                                $smallUrl = $img['small_image_url'] ?? $largeUrl;
+                            @endphp
+                            @if ($smallUrl && $largeUrl)
+                                <button
+                                    type="button"
+                                    class="pk-product__thumb {{ $idx === 0 ? 'is-active' : '' }}"
+                                    data-pk-thumb="{{ $largeUrl }}"
+                                    aria-label="View product image {{ $idx + 1 }}"
+                                    @if ($idx === 0) aria-current="true" @endif
                                 >
                                     <img
-                                        src="{{ $img['small_image_url'] }}"
-                                        alt="{{ $product->name }}"
+                                        src="{{ $smallUrl }}"
+                                        alt="{{ $product->name }} view {{ $idx + 1 }}"
                                         loading="lazy"
-                                        class="h-full w-full object-cover"
                                     >
-                                </a>
+                                </button>
                             @endif
                         @endforeach
                     </div>
                 @endif
             </div>
 
-            <!-- Wholesale Pricing & Commercial Summary Column -->
-            <div class="pk-product__summary flex flex-col gap-5">
-                <div class="pk-product__header">
-                    <div class="pk-product__badges flex flex-wrap items-center gap-2 mb-2">
-                        <span class="pk-card__sku text-xs font-mono font-semibold px-2 py-0.5 rounded bg-zinc-100 text-zinc-700 border border-zinc-200">
-                            SKU: {{ $product->sku }}
-                        </span>
+            <!-- Commercial Pricing & Action Summary -->
+            <div class="pk-product__summary">
+                <div>
+                    <div class="pk-product__badges">
+                        <x-shop::portal.badge variant="neutral">SKU: {{ $product->sku }}</x-shop::portal.badge>
 
                         @if (! empty($pricing['supply_availability']))
-                            <span class="pk-badge pk-badge--verified text-xs px-2.5 py-0.5">
+                            <x-shop::portal.badge variant="verified">
                                 {{ $pricing['supply_availability'] }}
-                            </span>
+                            </x-shop::portal.badge>
                         @endif
                     </div>
 
-                    <h1 class="pk-product__title text-2xl md:text-3xl font-extrabold text-[#0f4a3e] tracking-tight">
-                        {{ $product->name }}
-                    </h1>
+                    <h1 class="pk-product__title">{{ $product->name }}</h1>
 
                     @if (filled($product->short_description))
-                        <div class="pk-product__short-desc text-sm text-[#5a6f68] mt-2 leading-relaxed">
+                        <div class="pk-product__short-desc">
                             {!! $product->short_description !!}
                         </div>
                     @endif
                 </div>
 
-                <!-- B2B Wholesale Pricing Box -->
-                <div class="pk-pricing-box rounded-xl bg-[#f0f7f4] border border-[#d9e6e1] p-5 shadow-sm">
-                    <div class="pk-pricing-box__header border-b border-[#d9e6e1] pb-3 mb-3">
-                        <span class="pk-pricing-box__label text-xs font-bold uppercase tracking-wider text-emerald-800">
-                            Indicative Wholesale Price
-                        </span>
+                <!-- Model B Indicative Pricing Box -->
+                <div class="pk-pricing-box">
+                    <div class="pk-pricing-box__header">
+                        <span class="pk-pricing-box__label">Indicative Wholesale Price</span>
 
-                        @if ($pricing['is_range'])
-                            <div class="pk-pricing-box__value text-2xl font-extrabold text-[#0f4a3e] mt-1">
-                                {{ $pricing['price_display'] }}
-                            </div>
-                        @else
-                            <div class="pk-pricing-box__value text-xl font-bold text-emerald-800 mt-1">
-                                {{ $pricing['price_display'] }}
-                            </div>
-                        @endif
+                        <div class="pk-pricing-box__value">
+                            {{ $pricing['price_display'] }}
+                        </div>
                     </div>
 
-                    <dl class="pk-pricing-box__specs grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                        <div class="pk-pricing-box__spec bg-white/70 rounded-lg p-2.5 border border-[#d9e6e1]/60">
-                            <dt class="text-zinc-500 font-medium">Minimum Order (MOQ)</dt>
-                            <dd class="text-zinc-900 font-bold mt-0.5">{{ $pricing['moq_display'] ?? 'Contact for MOQ' }}</dd>
+                    <dl class="pk-pricing-box__specs">
+                        <div class="pk-pricing-box__spec">
+                            <dt>Minimum Order (MOQ)</dt>
+                            <dd>{{ $pricing['moq_display'] ?? 'Contact for MOQ' }}</dd>
                         </div>
 
-                        <div class="pk-pricing-box__spec bg-white/70 rounded-lg p-2.5 border border-[#d9e6e1]/60">
-                            <dt class="text-zinc-500 font-medium">Packaging Unit</dt>
-                            <dd class="text-zinc-900 font-bold mt-0.5">{{ $pricing['unit'] ?? 'Per specification' }}</dd>
+                        <div class="pk-pricing-box__spec">
+                            <dt>Packaging Unit</dt>
+                            <dd>{{ $pricing['unit'] ?? 'Per specification' }}</dd>
                         </div>
 
-                        <div class="pk-pricing-box__spec bg-white/70 rounded-lg p-2.5 border border-[#d9e6e1]/60">
-                            <dt class="text-zinc-500 font-medium">Commercial Supply</dt>
-                            <dd class="text-zinc-900 font-bold mt-0.5">{{ $pricing['supply_availability'] ?? 'Contact for Availability' }}</dd>
+                        <div class="pk-pricing-box__spec">
+                            <dt>Commercial Supply</dt>
+                            <dd>{{ $pricing['supply_availability'] ?? 'Contact for Availability' }}</dd>
                         </div>
                     </dl>
 
-                    <p class="pk-pricing-box__disclaimer text-[11px] text-[#5a6f68] mt-3 pt-3 border-t border-[#d9e6e1]/70 leading-relaxed italic">
+                    <p class="pk-pricing-box__disclaimer">
                         {{ $pricing['disclaimer'] }}
                     </p>
                 </div>
 
-                <!-- Wholesale Purchasing & Inquiry Actions Panel -->
-                <div class="pk-product__actions-panel border-t border-[#d9e6e1] pt-5">
-                    <h2 class="pk-product__actions-title text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">
-                        Wholesale Inquiry &amp; Purchasing
-                    </h2>
+                <!-- Inquiry & Purchasing Actions Panel -->
+                <div class="pk-product__actions-panel">
+                    <h2 class="pk-product__actions-title">Wholesale Inquiry &amp; Purchasing</h2>
 
-                    <div class="pk-product__actions flex flex-wrap items-center gap-3">
+                    <div class="pk-product__actions">
                         @if ($isVerifiedBuyer && $canAccessB2BQuotes)
-                            <a
-                                href="{{ route('shop.customers.account.quotes.index') }}"
-                                class="pk-btn pk-btn--primary px-6 py-2.5 text-xs font-bold shadow-sm"
-                            >
+                            <x-shop::portal.button :href="route('shop.customers.account.quotes.index')" variant="primary">
                                 Buy Wholesale &rarr;
-                            </a>
+                            </x-shop::portal.button>
                         @elseif ($verificationStatus === 'pending')
-                            <a
-                                href="{{ route('shop.customers.account.buyer_verification.index') }}"
-                                class="pk-btn bg-amber-500 text-white hover:bg-amber-600 px-5 py-2.5 text-xs font-semibold"
+                            <x-shop::portal.button
+                                :href="route('shop.customers.account.buyer_verification.index')"
+                                variant="earth"
                                 title="Your buyer verification application is currently under commercial review"
                             >
                                 Verification Pending Review
-                            </a>
+                            </x-shop::portal.button>
                         @else
-                            <a
-                                href="{{ route('shop.customers.account.buyer_verification.index') }}"
-                                class="pk-btn pk-btn--primary px-5 py-2.5 text-xs font-bold shadow-sm"
+                            <x-shop::portal.button
+                                :href="route('shop.customers.account.buyer_verification.index')"
+                                variant="primary"
                                 title="Submit business credentials to unlock wholesale purchasing"
                             >
                                 Verify Account to Buy Wholesale
-                            </a>
+                            </x-shop::portal.button>
                         @endif
 
                         <span
-                            class="pk-btn pk-btn--ghost text-zinc-400 border-zinc-200 cursor-not-allowed py-2.5 px-4 text-xs font-medium"
+                            class="pk-btn pk-btn--secondary"
                             aria-disabled="true"
                             title="Long-term supply agreements require formal agreement execution"
                         >
                             Buy with Long-Term Contract
                         </span>
 
-                        <a
-                            href="{{ route('shop.customers.account.conversations.create', ['category' => 'product_inquiry', 'subject' => 'Inquiry: ' . $product->name . ' (SKU: ' . $product->sku . ')']) }}"
-                            class="pk-btn pk-btn--ghost py-2.5 px-4 text-xs font-semibold"
+                        <x-shop::portal.button
+                            :href="route('shop.customers.account.conversations.create', ['category' => 'product_inquiry', 'subject' => 'Inquiry: ' . $product->name . ' (SKU: ' . $product->sku . ')'])"
+                            variant="secondary"
                             title="Directly message PurNatureK administrators regarding this product"
                         >
                             Message Admin
-                        </a>
+                        </x-shop::portal.button>
                     </div>
 
-                    <p class="pk-product__verification-note text-xs text-[#5a6f68] mt-3 leading-relaxed">
+                    <p class="pk-product__verification-note">
                         Official wholesale transactions and Master Supply Agreements are restricted to
-                        <strong class="text-[#0f4a3e]">Verified Wholesale Buyers</strong> and remain subject to formal quotation, specification review, and mutual agreement.
+                        <strong class="pk-text-primary">Verified Wholesale Buyers</strong> and remain subject to formal quotation, specification review, and mutual agreement.
                     </p>
                 </div>
             </div>
@@ -216,74 +203,63 @@
 
         <!-- Product Description & Overview -->
         @if (filled($product->description))
-            <div class="pk-product__section pk-card p-6 md:p-8 mt-6">
-                <h2 class="pk-product__section-title text-lg font-bold text-[#0f4a3e] border-b border-[#d9e6e1] pb-3 mb-4">
-                    Product Description &amp; Overview
-                </h2>
-
-                <div class="pk-product__prose text-sm text-[#1e2d29] leading-relaxed">
+            <x-shop::portal.card
+                eyebrow="Botanical Profile"
+                title="Product Description & Overview"
+            >
+                <div class="pk-product__prose">
                     {!! $product->description !!}
                 </div>
-            </div>
+            </x-shop::portal.card>
         @endif
 
-        <!-- Product Specifications Table (Module 2.5) -->
+        <!-- Technical Specifications -->
         @if ($specs->isNotEmpty())
-            <div class="pk-product__section pk-card p-6 md:p-8 mt-6">
-                <h2 class="pk-product__section-title text-lg font-bold text-[#0f4a3e] border-b border-[#d9e6e1] pb-3 mb-4">
-                    Product Specifications
-                </h2>
-
-                <dl class="pk-spec-list grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-3 text-sm">
+            <x-shop::portal.card
+                eyebrow="Technical Parameters"
+                title="Product Specifications"
+            >
+                <dl class="pk-spec-list">
                     @foreach ($specs as $spec)
-                        <div class="pk-spec-list__row flex items-baseline justify-between border-b border-[#d9e6e1]/60 py-2">
-                            <dt class="text-zinc-500 font-medium">{{ $spec['label'] }}</dt>
-                            <dd class="text-[#0f4a3e] font-semibold font-mono">{{ $spec['value'] }}</dd>
+                        <div class="pk-spec-list__row">
+                            <dt>{{ $spec['label'] }}</dt>
+                            <dd>{{ $spec['value'] }}</dd>
                         </div>
                     @endforeach
                 </dl>
-            </div>
+            </x-shop::portal.card>
         @endif
 
-        <!-- Product Documentation & Quality Certificates (Module 2.5) -->
-        <div class="pk-product__section pk-card p-6 md:p-8 mt-6">
-            <div class="border-b border-[#d9e6e1] pb-4 mb-6">
-                <h2 class="pk-product__section-title text-lg font-bold text-[#0f4a3e]">
-                    Product Documentation &amp; Quality Certificates
-                </h2>
-                <p class="text-xs text-[#5a6f68] mt-1">
-                    Verified technical specifications, batch Certificates of Analysis (COA), Technical Data Sheets (TDS), and quality documentation.
-                </p>
-            </div>
-
+        <!-- Grouped Documentation (COA / TDS / Compliance) -->
+        <x-shop::portal.card
+            eyebrow="Quality Custody"
+            title="Product Documentation & Quality Certificates"
+            subtitle="Verified technical specifications, batch Certificates of Analysis (COA), Technical Data Sheets (TDS), and quality documentation."
+        >
             @if ($hasAnyDocuments)
-                <div class="pk-doc-groups space-y-6">
-                    @foreach ($groupedDocuments as $groupKey => $group)
+                <div class="pk-stack-md">
+                    @foreach ($groupedDocuments as $group)
                         @if ($group['documents']->isNotEmpty())
-                            <div class="pk-doc-group">
-                                <h3 class="text-sm font-bold uppercase tracking-wider text-emerald-800 mb-3 flex items-center gap-2">
-                                    <span class="h-2 w-2 rounded-full bg-emerald-600"></span>
-                                    {{ $group['title'] }}
-                                </h3>
+                            <div class="pk-stack-xs">
+                                <span class="pk-eyebrow">{{ $group['title'] }}</span>
 
-                                <div class="pk-doc-list space-y-3">
+                                <div class="pk-stack-xs">
                                     @foreach ($group['documents'] as $doc)
-                                        <div class="pk-doc-card rounded-xl border border-[#d9e6e1] bg-[#f0f7f4]/40 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                                            <div class="pk-doc-card__main">
-                                                <div class="pk-doc-card__header flex flex-wrap items-center gap-2">
-                                                    <h4 class="pk-doc-card__title text-sm font-bold text-[#0f4a3e]">{{ $doc->title }}</h4>
-                                                    <span class="pk-badge bg-zinc-100 text-zinc-700 border border-zinc-200 text-[10px] px-2 py-0.5">
-                                                        {{ $doc->type_label }}
-                                                    </span>
+                                        <div class="pk-doc-card">
+                                            <div>
+                                                <div class="flex flex-wrap items-center gap-2">
+                                                    <h4 class="pk-doc-card__title">{{ $doc->title }}</h4>
+                                                    <x-shop::portal.badge variant="neutral" size="sm">{{ $doc->type_label }}</x-shop::portal.badge>
                                                     @if (filled($doc->version))
-                                                        <span class="pk-badge bg-emerald-100 text-emerald-800 text-[10px] px-2 py-0.5 font-mono">
-                                                            {{ $doc->version }}
-                                                        </span>
+                                                        <x-shop::portal.badge variant="verified" size="sm">{{ $doc->version }}</x-shop::portal.badge>
                                                     @endif
                                                 </div>
 
-                                                <div class="pk-doc-card__meta flex flex-wrap items-center gap-3 text-xs text-[#5a6f68] mt-1.5">
-                                                    <span><strong>Format:</strong> {{ strtoupper($doc->mime_type === 'application/pdf' ? 'PDF' : ($doc->mime_type === 'image/webp' ? 'WEBP' : ($doc->mime_type === 'image/png' ? 'PNG' : 'JPG'))) }}</span>
+                                                <div class="pk-doc-card__meta">
+                                                    <span>
+                                                        <strong>Format:</strong>
+                                                        {{ strtoupper($doc->mime_type === 'application/pdf' ? 'PDF' : ($doc->mime_type === 'image/webp' ? 'WEBP' : ($doc->mime_type === 'image/png' ? 'PNG' : 'JPG'))) }}
+                                                    </span>
                                                     <span><strong>Size:</strong> {{ $doc->formatted_file_size }}</span>
                                                     @if ($doc->issue_date)
                                                         <span><strong>Issued:</strong> {{ $doc->issue_date->format('M d, Y') }}</span>
@@ -294,28 +270,28 @@
                                                 </div>
 
                                                 @if (filled($doc->description))
-                                                    <p class="pk-doc-card__desc text-xs text-[#5a6f68] mt-2">{{ $doc->description }}</p>
+                                                    <p class="pk-help-text" style="margin-top: 6px;">{{ $doc->description }}</p>
                                                 @endif
                                             </div>
 
-                                            <div class="pk-doc-card__actions flex items-center gap-2 shrink-0">
-                                                <a
-                                                    href="{{ route('shop.customers.account.product_documents.preview', [$product->id, $doc->id]) }}"
+                                            <div class="pk-doc-card__actions">
+                                                <x-shop::portal.button
+                                                    :href="route('shop.customers.account.product_documents.preview', [$product->id, $doc->id])"
                                                     target="_blank"
                                                     rel="noopener noreferrer"
-                                                    class="pk-btn pk-btn--ghost py-1.5 px-3 text-xs font-semibold"
-                                                    title="Preview document in browser"
+                                                    variant="secondary"
+                                                    size="sm"
                                                 >
                                                     Preview
-                                                </a>
+                                                </x-shop::portal.button>
 
-                                                <a
-                                                    href="{{ route('shop.customers.account.product_documents.download', [$product->id, $doc->id]) }}"
-                                                    class="pk-btn pk-btn--primary py-1.5 px-3 text-xs font-semibold"
-                                                    title="Download document file securely"
+                                                <x-shop::portal.button
+                                                    :href="route('shop.customers.account.product_documents.download', [$product->id, $doc->id])"
+                                                    variant="primary"
+                                                    size="sm"
                                                 >
                                                     Download
-                                                </a>
+                                                </x-shop::portal.button>
                                             </div>
                                         </div>
                                     @endforeach
@@ -325,25 +301,71 @@
                     @endforeach
                 </div>
             @else
-                <!-- Clear Awaiting Document State -->
-                <div class="pk-doc-empty rounded-xl bg-[#f0f7f4] border border-[#d9e6e1] p-6 text-center">
-                    <p class="text-sm font-medium text-[#0f4a3e]">
-                        No technical documents or batch certificates are currently published for this product.
-                    </p>
-                    <p class="text-xs text-[#5a6f68] mt-1.5 max-w-lg mx-auto leading-relaxed">
-                        For customized technical specifications, lot-specific Certificates of Analysis (COA), or Technical Data Sheets (TDS), please contact your PurNatureK wholesale representative.
-                    </p>
-                    <div class="mt-4">
-                        <a
-                            href="{{ route('shop.customers.account.conversations.create', ['category' => 'product_inquiry', 'subject' => 'Document Request: ' . $product->name . ' (SKU: ' . $product->sku . ')']) }}"
-                            class="pk-btn pk-btn--primary py-2 px-4 text-xs font-bold"
+                <x-shop::portal.empty-state
+                    title="Documentation Pending Publication"
+                    description="No technical documents or batch Certificates of Analysis (COA) are currently published for this SKU. Contact our commercial desk for lot-specific files."
+                >
+                    <x-slot:actions>
+                        <x-shop::portal.button
+                            :href="route('shop.customers.account.conversations.create', ['category' => 'product_inquiry', 'subject' => 'Document Request: ' . $product->name . ' (SKU: ' . $product->sku . ')'])"
+                            variant="primary"
+                            size="sm"
                         >
                             Request Document via Message Admin &rarr;
-                        </a>
-                    </div>
-                </div>
+                        </x-shop::portal.button>
+                    </x-slot>
+                </x-shop::portal.empty-state>
             @endif
-        </div>
+        </x-shop::portal.card>
     </section>
-</x-shop::layouts.account>
 
+    @push('scripts')
+        <script>
+            (function () {
+                // Interactive Gallery Thumbnail Switcher
+                var mainImg = document.getElementById('pk-pdp-main-img');
+                var thumbs = document.querySelectorAll('[data-pk-thumb]');
+                if (mainImg && thumbs.length) {
+                    thumbs.forEach(function (btn) {
+                        btn.addEventListener('click', function () {
+                            var nextSrc = btn.getAttribute('data-pk-thumb');
+                            if (!nextSrc) return;
+                            mainImg.src = nextSrc;
+                            thumbs.forEach(function (other) {
+                                other.classList.remove('is-active');
+                                other.removeAttribute('aria-current');
+                            });
+                            btn.classList.add('is-active');
+                            btn.setAttribute('aria-current', 'true');
+                        });
+                    });
+                }
+
+                // Customer-scoped Recently Viewed persistence
+                @if ($customer)
+                    @php
+                        $recentPayload = [
+                            'id'    => (int) $product->id,
+                            'sku'   => (string) $product->sku,
+                            'name'  => (string) $product->name,
+                            'url'   => route('shop.product_or_category.index', $product->url_key, false),
+                            'image' => $recentThumb ? parse_url($recentThumb, PHP_URL_PATH) : null,
+                        ];
+                    @endphp
+                    try {
+                        var storageKey = 'pk_recent_{{ (int) $customer->id }}';
+                        var currentItem = {{ \Illuminate\Support\Js::from($recentPayload) }};
+
+                        var existing = JSON.parse(localStorage.getItem(storageKey) || '[]');
+                        if (!Array.isArray(existing)) existing = [];
+                        existing = existing.filter(function (item) {
+                            return item && item.id !== currentItem.id;
+                        });
+                        existing.unshift(currentItem);
+                        localStorage.setItem(storageKey, JSON.stringify(existing.slice(0, 6)));
+                    } catch (e) {}
+                @endif
+            })();
+        </script>
+    @endpush
+</x-shop::layouts.account>

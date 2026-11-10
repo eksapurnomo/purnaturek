@@ -1,316 +1,398 @@
+{{--
+    PurNatureK Members Portal — Buyer Verification
+    (shop::customers.account.buyer_verification.index)
+--}}
 <x-shop::layouts.account>
     <x-slot:title>
         Buyer Verification — PurNatureK Members Portal
     </x-slot>
 
-    <x-shop::layouts.account.navigation />
+    <div class="max-md:hidden">
+        <x-shop::layouts.account.navigation />
+    </div>
 
-    <div class="pk-main">
-        <div class="flex flex-col gap-6">
+    <div class="pk-main pk-stack-md" v-pre>
+        <!-- Flash & Validation Alerts -->
+        @if (session('success'))
+            <x-shop::portal.alert variant="success" title="Submission Confirmed">
+                {{ session('success') }}
+            </x-shop::portal.alert>
+        @endif
 
-            <!-- Flash Messages -->
-            @if (session('success'))
-                <div class="rounded-xl border border-green-200 bg-green-50 p-4 text-sm text-green-800">
-                    {{ session('success') }}
-                </div>
-            @endif
+        @if (session('warning'))
+            <x-shop::portal.alert variant="warning" title="Verification Notice">
+                {{ session('warning') }}
+            </x-shop::portal.alert>
+        @endif
 
-            @if (session('warning'))
-                <div class="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-800">
-                    {{ session('warning') }}
-                </div>
-            @endif
+        @if (isset($errors) && $errors->any())
+            <x-shop::portal.alert variant="danger" title="Please correct the highlighted fields">
+                <ul style="margin: 6px 0 0; padding-left: 18px;">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </x-shop::portal.alert>
+        @endif
 
-            @if (isset($errors) && $errors->any())
-                <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-                    <p class="font-semibold mb-1">Please correct the following errors:</p>
-                    <ul class="list-disc pl-5">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
-
-            <!-- Status Banner & Overview Card -->
-            <div class="rounded-xl border border-zinc-200 bg-white p-6 max-sm:p-4">
-                <div class="flex flex-wrap items-center justify-between gap-4 border-b border-zinc-200 pb-4">
-                    <div>
-                        <h2 class="text-xl font-bold text-zinc-900">Buyer Verification Status</h2>
-                        <p class="text-sm text-zinc-500 mt-1">
-                            PurNatureK Wholesale Commercial Account Verification
-                        </p>
-                    </div>
-
-                    <div>
-                        @if ($status === 'approved')
-                            <span class="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-800">
-                                <span class="h-2 w-2 rounded-full bg-emerald-600"></span>
-                                Verified Wholesale Buyer
-                            </span>
-                        @elseif ($status === 'pending')
-                            <span class="inline-flex items-center gap-1.5 rounded-full bg-amber-100 px-3 py-1 text-xs font-semibold text-amber-800">
-                                <span class="h-2 w-2 rounded-full bg-amber-600"></span>
-                                Pending Review
-                            </span>
-                        @elseif ($status === 'rejected')
-                            <span class="inline-flex items-center gap-1.5 rounded-full bg-rose-100 px-3 py-1 text-xs font-semibold text-rose-800">
-                                <span class="h-2 w-2 rounded-full bg-rose-600"></span>
-                                Action Required / Rejected
-                            </span>
-                        @else
-                            <span class="inline-flex items-center gap-1.5 rounded-full bg-zinc-100 px-3 py-1 text-xs font-semibold text-zinc-700">
-                                <span class="h-2 w-2 rounded-full bg-zinc-400"></span>
-                                Registered Member (Unverified)
-                            </span>
-                        @endif
-                    </div>
-                </div>
-
-                <!-- Status Explanations -->
+        <!-- Page Header -->
+        <x-shop::portal.page-header
+            eyebrow="Tier 2 Compliance Onboarding"
+            title="Wholesale Buyer Verification"
+            subtitle="Commercial credential review unlocking formal RFQs, contract pricing agreements, sample requests, and wholesale purchase orders."
+        >
+            <x-slot:actions>
                 @if ($status === 'approved')
-                    <div class="mt-6 rounded-lg bg-emerald-50 border border-emerald-200 p-4 text-emerald-900">
-                        <h4 class="font-semibold text-base mb-1">Your Account is Fully Verified</h4>
-                        <p class="text-sm">
-                            Congratulations! Your business credentials for <strong>{{ $latestVerification->company_name }}</strong> have been verified. You have full access to wholesale commercial transactions, formal RFQs, sample requests, and purchase orders.
-                        </p>
-                        <div class="mt-4 flex flex-wrap gap-3">
-                            <a href="{{ route('shop.customers.account.index') }}#catalog" class="primary-button text-sm px-4 py-2">
-                                Browse Wholesale Catalog
-                            </a>
-                            <a href="{{ route('shop.customers.account.business_documents.index') }}" class="secondary-button text-sm px-4 py-2 border-zinc-300">
-                                View Business Documents
-                            </a>
-                        </div>
-                    </div>
-
+                    <x-shop::portal.badge variant="verified">Verified Wholesale Buyer</x-shop::portal.badge>
                 @elseif ($status === 'pending')
-                    <div class="mt-6 rounded-lg bg-amber-50 border border-amber-200 p-4 text-amber-900">
-                        <h4 class="font-semibold text-base mb-1">Application Under Compliance Review</h4>
-                        <p class="text-sm">
-                            Your verification request submitted on <strong>{{ $latestVerification->submitted_at?->format('M d, Y H:i') }}</strong> is currently under review by our commercial team. Typical verification turnaround is 1–2 business days.
-                        </p>
-                        <div class="mt-2.5 text-xs text-amber-900 space-y-0.5 bg-amber-100/60 p-2.5 rounded border border-amber-200">
-                            <p><strong>Company:</strong> {{ $latestVerification->company_name }}</p>
-                            <p><strong>Tax ID:</strong> {{ $latestVerification->tax_id }}</p>
-                        </div>
-                        <p class="text-sm mt-2 text-amber-800">
-                            Your member portal access remains fully active. You may continue to browse wholesale product specifications and pricing ranges while review is underway.
-                        </p>
-                        <div class="mt-4">
-                            <a href="{{ route('shop.customers.account.business_documents.index') }}" class="secondary-button text-sm px-4 py-2 border-zinc-300 bg-white">
-                                View Submitted Credentials
-                            </a>
-                        </div>
-                    </div>
-
+                    <x-shop::portal.badge variant="pending">Pending Commercial Review</x-shop::portal.badge>
                 @elseif ($status === 'rejected')
-                    <div class="mt-6 rounded-lg bg-rose-50 border border-rose-200 p-4 text-rose-900">
-                        <h4 class="font-semibold text-base mb-1">Application Requires Attention</h4>
-                        <p class="text-sm">
-                            Our compliance team reviewed your application and noted the following reason:
-                        </p>
-                        <div class="mt-2 rounded bg-white p-3 border border-rose-200 text-sm font-medium text-rose-800">
-                            {{ $latestVerification->rejection_reason ?: 'Incomplete or unreadable documentation provided.' }}
-                        </div>
-                        <p class="text-sm mt-3">
-                            Please update your business information or attach updated documentation using the form below to resubmit.
-                        </p>
-                    </div>
+                    <x-shop::portal.badge variant="action">Action Required / Rejected</x-shop::portal.badge>
                 @else
-                    <div class="mt-6 rounded-lg bg-zinc-50 border border-zinc-200 p-4 text-zinc-800">
-                        <h4 class="font-semibold text-base mb-1">Why Verify Your Wholesale Account?</h4>
-                        <p class="text-sm">
-                            As a Registered Member, you have access to private catalog pricing and product technical overviews. To initiate formal Requests for Quote (RFQ), receive contract pricing, request physical product samples, or place purchase orders, please submit your business credentials below.
-                        </p>
-                    </div>
+                    <x-shop::portal.badge variant="neutral">Tier 1 Member (Unverified)</x-shop::portal.badge>
                 @endif
+
+                <x-shop::portal.button
+                    :href="route('shop.customers.account.business_documents.index')"
+                    variant="secondary"
+                    size="sm"
+                >
+                    Uploaded Credentials
+                </x-shop::portal.button>
+            </x-slot:actions>
+        </x-shop::portal.page-header>
+
+        <!-- Onboarding Stepper & Status Summary -->
+        <x-shop::portal.card
+            eyebrow="Verification Progress"
+            title="Account Qualification Stages"
+        >
+            @php
+                $step1Class = $status === 'unverified' ? 'is-current' : 'is-done';
+                $step2Class = $status === 'approved' ? 'is-done' : (in_array($status, ['pending', 'rejected'], true) ? 'is-current' : '');
+                $step3Class = $status === 'approved' ? 'is-done' : '';
+            @endphp
+
+            <div class="pk-stepper">
+                <div class="pk-step {{ $step1Class }}">
+                    <span class="pk-step__num">Stage 01</span>
+                    <span class="pk-step__label">Submit Business Credentials</span>
+                </div>
+                <div class="pk-step {{ $step2Class }}">
+                    <span class="pk-step__num">Stage 02</span>
+                    <span class="pk-step__label">Commercial Team Review</span>
+                </div>
+                <div class="pk-step {{ $step3Class }}">
+                    <span class="pk-step__num">Stage 03</span>
+                    <span class="pk-step__label">Tier 2 Purchasing Unlocked</span>
+                </div>
             </div>
 
-            <!-- Application Form (Shown if Unverified or Rejected) -->
-            @if ($status === 'unverified' || $status === 'rejected')
-                <div class="rounded-xl border border-zinc-200 bg-white p-6 max-sm:p-4">
-                    <h3 class="text-lg font-semibold text-zinc-900 mb-4 border-b border-zinc-200 pb-3">
-                        {{ $status === 'rejected' ? 'Update & Resubmit Verification Application' : 'Submit Business Verification Credentials' }}
-                    </h3>
-
-                    <form
-                        action="{{ route('shop.customers.account.buyer_verification.store') }}"
-                        method="POST"
-                        enctype="multipart/form-data"
-                        class="flex flex-col gap-5"
-                    >
-                        @csrf
-
-                        <div class="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-                            <div>
-                                <label class="block text-sm font-medium text-zinc-700 mb-1 required">
-                                    Legal Company / Business Name
-                                </label>
-                                <input
-                                    type="text"
-                                    name="company_name"
-                                    value="{{ old('company_name', $latestVerification?->company_name) }}"
-                                    required
-                                    class="w-full rounded-lg border border-zinc-300 px-3.5 py-2 text-sm text-zinc-800 focus:border-zinc-500 focus:outline-none"
-                                    placeholder="e.g. Pharmako Life Sciences LLC"
-                                >
+            <div style="margin-top: 18px;">
+                @if ($status === 'approved')
+                    <x-shop::portal.alert variant="success" title="Your Account is Fully Verified">
+                        <p style="margin: 0;">
+                            Your business credentials for <strong>{{ $latestVerification->company_name }}</strong> have been verified. You hold Tier 2 access for formal RFQs, sample inquiries, commercial contracts, and approved purchase orders.
+                        </p>
+                        <x-slot:actions>
+                            <x-shop::portal.button :href="route('shop.customers.account.index') . '#catalog'" variant="primary" size="sm">
+                                Browse Wholesale Catalog
+                            </x-shop::portal.button>
+                            <x-shop::portal.button :href="route('shop.customers.account.business_documents.index')" variant="secondary" size="sm">
+                                Business Documents
+                            </x-shop::portal.button>
+                        </x-slot:actions>
+                    </x-shop::portal.alert>
+                @elseif ($status === 'pending')
+                    <x-shop::portal.alert variant="warning" title="Application Under Compliance Review">
+                        <p style="margin: 0 0 10px;">
+                            Submitted on <strong>{{ $latestVerification->submitted_at?->format('M d, Y H:i') }}</strong>. Typical verification turnaround is 1–2 business days. Your Tier 1 member portal access remains active so you can browse specifications and indicative wholesale pricing ranges while review is underway.
+                        </p>
+                        <dl class="pk-dl-list" style="margin-top: 10px;">
+                            <div class="pk-dl-item">
+                                <dt>Submitted Entity</dt>
+                                <dd>{{ $latestVerification->company_name }}</dd>
                             </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-zinc-700 mb-1 required">
-                                    Business Tax ID / VAT / EIN / Reg Number
-                                </label>
-                                <input
-                                    type="text"
-                                    name="tax_id"
-                                    value="{{ old('tax_id', $latestVerification?->tax_id) }}"
-                                    required
-                                    class="w-full rounded-lg border border-zinc-300 px-3.5 py-2 text-sm text-zinc-800 focus:border-zinc-500 focus:outline-none"
-                                    placeholder="e.g. US-EIN-987654321"
-                                >
+                            <div class="pk-dl-item">
+                                <dt>Tax ID / Registration</dt>
+                                <dd class="pk-mono">{{ $latestVerification->tax_id }}</dd>
                             </div>
+                        </dl>
+                        <x-slot:actions>
+                            <x-shop::portal.button :href="route('shop.customers.account.business_documents.index')" variant="secondary" size="sm">
+                                View Submitted Credentials
+                            </x-shop::portal.button>
+                        </x-slot:actions>
+                    </x-shop::portal.alert>
+                @elseif ($status === 'rejected')
+                    <x-shop::portal.alert variant="danger" title="Application Requires Correction & Resubmission">
+                        <p style="margin: 0 0 8px;">
+                            Our compliance team reviewed your application and recorded the following reason:
+                        </p>
+                        <div class="pk-note-box">
+                            {{ $latestVerification->rejection_reason ?: 'Incomplete or unreadable documentation provided.' }}
                         </div>
+                        <p style="margin: 8px 0 0;">
+                            Please update your business details or attach clearer credential files in the form below to resubmit.
+                        </p>
+                    </x-shop::portal.alert>
+                @else
+                    <x-shop::portal.alert variant="info" title="Why Verify Your Wholesale Buyer Account?">
+                        As a Tier 1 Member, you can inspect the private botanical catalog, indicative wholesale pricing ranges, and COA/TDS documentation. Completing commercial verification unlocks formal RFQs, custom contract pricing, physical sample inquiries, and purchase orders.
+                    </x-shop::portal.alert>
+                @endif
+            </div>
+        </x-shop::portal.card>
 
-                        <div class="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-                            <div>
-                                <label class="block text-sm font-medium text-zinc-700 mb-1 required">
-                                    Business Type / Sector
-                                </label>
-                                <select
-                                    name="business_type"
-                                    required
-                                    class="w-full rounded-lg border border-zinc-300 px-3.5 py-2 text-sm text-zinc-800 focus:border-zinc-500 focus:outline-none bg-white"
-                                >
-                                    <option value="">Select your business type</option>
-                                    @foreach (\App\Models\BuyerVerification::BUSINESS_TYPES as $code => $label)
-                                        <option
-                                            value="{{ $code }}"
-                                            {{ old('business_type', $latestVerification?->business_type) === $code ? 'selected' : '' }}
-                                        >
-                                            {{ $label }}
-                                        </option>
-                                    @endforeach
-                                </select>
-                            </div>
+        <!-- Application Form (Unverified or Rejected) -->
+        @if ($status === 'unverified' || $status === 'rejected')
+            <x-shop::portal.card
+                eyebrow="Credential Filing"
+                :title="$status === 'rejected' ? 'Update & Resubmit Verification Application' : 'Submit Business Verification Credentials'"
+                subtitle="Provide your legal entity details and upload at least one official commercial credential for verification."
+            >
+                <form
+                    action="{{ route('shop.customers.account.buyer_verification.store') }}"
+                    method="POST"
+                    enctype="multipart/form-data"
+                    id="pk-buyer-verification-form"
+                    data-pk-guard-submit="Submitting Application..."
+                >
+                    @csrf
 
-                            <div>
-                                <label class="block text-sm font-medium text-zinc-700 mb-1 required">
-                                    Commercial Telephone Number
-                                </label>
-                                <input
-                                    type="text"
-                                    name="business_phone"
-                                    value="{{ old('business_phone', $latestVerification?->business_phone) }}"
-                                    required
-                                    class="w-full rounded-lg border border-zinc-300 px-3.5 py-2 text-sm text-zinc-800 focus:border-zinc-500 focus:outline-none"
-                                    placeholder="e.g. +1 (555) 019-2834"
-                                >
-                            </div>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-zinc-700 mb-1 required">
-                                Commercial Registered Address
-                            </label>
-                            <textarea
-                                name="business_address"
-                                rows="2"
-                                required
-                                class="w-full rounded-lg border border-zinc-300 px-3.5 py-2 text-sm text-zinc-800 focus:border-zinc-500 focus:outline-none"
-                                placeholder="Registered business address, city, state/province, postal code, country"
-                            >{{ old('business_address', $latestVerification?->business_address) }}</textarea>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-zinc-700 mb-1">
-                                Company Website (Optional)
+                    <div class="pk-form-row">
+                        <div class="pk-field">
+                            <label for="bv_company_name" class="pk-label pk-label--required">
+                                Legal Company / Business Name
                             </label>
                             <input
-                                type="url"
-                                name="website_url"
-                                value="{{ old('website_url', $latestVerification?->website_url) }}"
-                                class="w-full rounded-lg border border-zinc-300 px-3.5 py-2 text-sm text-zinc-800 focus:border-zinc-500 focus:outline-none"
-                                placeholder="https://www.example.com"
+                                type="text"
+                                id="bv_company_name"
+                                name="company_name"
+                                value="{{ old('company_name', $latestVerification?->company_name) }}"
+                                required
+                                placeholder="e.g. Pacific Botanicals Formulations LLC"
+                                class="pk-input @error('company_name') pk-input--error @enderror"
                             >
+                            @error('company_name')
+                                <span class="pk-error-text">{{ $message }}</span>
+                            @enderror
                         </div>
 
-                        <!-- Document Upload Section -->
-                        <div class="rounded-lg border border-zinc-200 bg-zinc-50 p-4">
-                            <h4 class="text-sm font-semibold text-zinc-900 mb-2">
-                                Business Credential Documents (Required)
-                            </h4>
-                            <p class="text-xs text-zinc-500 mb-4">
-                                Please attach at least one verifiable commercial document (Business License, Tax Registration, or Resale Permit). Supported formats: PDF, JPG, PNG, WEBP (Max 10 MB per file).
-                            </p>
+                        <div class="pk-field">
+                            <label for="bv_tax_id" class="pk-label pk-label--required">
+                                Business Tax ID / VAT / EIN / Reg Number
+                            </label>
+                            <input
+                                type="text"
+                                id="bv_tax_id"
+                                name="tax_id"
+                                value="{{ old('tax_id', $latestVerification?->tax_id) }}"
+                                required
+                                placeholder="e.g. US-EIN-98-7654321"
+                                class="pk-input @error('tax_id') pk-input--error @enderror"
+                            >
+                            @error('tax_id')
+                                <span class="pk-error-text">{{ $message }}</span>
+                            @enderror
+                        </div>
+                    </div>
 
-                            <div class="flex flex-col gap-3">
-                                <div class="grid grid-cols-2 gap-4 max-sm:grid-cols-1 items-center bg-white p-3 rounded-lg border border-zinc-200">
-                                    <div>
-                                        <label class="block text-xs font-medium text-zinc-600 mb-1">Document 1 Type</label>
-                                        <select
-                                            name="document_types[0]"
-                                            class="w-full rounded border border-zinc-300 px-2.5 py-1.5 text-xs text-zinc-800 focus:outline-none"
-                                        >
-                                            <option value="business_license">Business Registration / License</option>
-                                            <option value="tax_certificate">Tax ID / VAT / GST Certificate</option>
-                                            <option value="resale_permit">Resale Certificate / Permit</option>
-                                            <option value="identity_proof">Authorized Signatory ID</option>
-                                            <option value="other">Other Supporting Document</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-zinc-600 mb-1">Choose File</label>
-                                        <input
-                                            type="file"
-                                            name="documents[0]"
-                                            required
-                                            accept=".pdf,.jpg,.jpeg,.png,.webp"
-                                            class="text-xs text-zinc-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-white hover:file:bg-zinc-700"
-                                        >
-                                    </div>
+                    <div class="pk-form-row">
+                        <div class="pk-field">
+                            <label for="bv_business_type" class="pk-label pk-label--required">
+                                Business Type / Sector
+                            </label>
+                            <select
+                                id="bv_business_type"
+                                name="business_type"
+                                required
+                                class="pk-select @error('business_type') pk-select--error @enderror"
+                            >
+                                <option value="">Select your business sector</option>
+                                @foreach (\App\Models\BuyerVerification::BUSINESS_TYPES as $code => $label)
+                                    <option
+                                        value="{{ $code }}"
+                                        {{ old('business_type', $latestVerification?->business_type) === $code ? 'selected' : '' }}
+                                    >
+                                        {{ $label }}
+                                    </option>
+                                @endforeach
+                            </select>
+                            @error('business_type')
+                                <span class="pk-error-text">{{ $message }}</span>
+                            @enderror
+                        </div>
+
+                        <div class="pk-field">
+                            <label for="bv_business_phone" class="pk-label pk-label--required">
+                                Commercial Telephone Number
+                            </label>
+                            <input
+                                type="text"
+                                id="bv_business_phone"
+                                name="business_phone"
+                                value="{{ old('business_phone', $latestVerification?->business_phone) }}"
+                                required
+                                placeholder="e.g. +1 (312) 555-0194"
+                                class="pk-input @error('business_phone') pk-input--error @enderror"
+                            >
+                            @error('business_phone')
+                                <span class="pk-error-text">{{ $message }}</span>
+                            @enderror
+                        </div>
+                    </div>
+
+                    <div class="pk-field">
+                        <label for="bv_business_address" class="pk-label pk-label--required">
+                            Commercial Registered Address
+                        </label>
+                        <textarea
+                            id="bv_business_address"
+                            name="business_address"
+                            rows="3"
+                            required
+                            placeholder="Street address, suite/unit, city, state/province, postal code, country"
+                            class="pk-textarea @error('business_address') pk-textarea--error @enderror"
+                        >{{ old('business_address', $latestVerification?->business_address) }}</textarea>
+                        @error('business_address')
+                            <span class="pk-error-text">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <div class="pk-field">
+                        <label for="bv_website_url" class="pk-label">
+                            Company Website (Optional)
+                        </label>
+                        <input
+                            type="url"
+                            id="bv_website_url"
+                            name="website_url"
+                            value="{{ old('website_url', $latestVerification?->website_url) }}"
+                            placeholder="https://www.example.com"
+                            class="pk-input @error('website_url') pk-input--error @enderror"
+                        >
+                        @error('website_url')
+                            <span class="pk-error-text">{{ $message }}</span>
+                        @enderror
+                    </div>
+
+                    <!-- Credential File Upload Section -->
+                    <div class="pk-upload-box">
+                        <h3 class="pk-serif" style="margin: 0; font-size: 20px; font-weight: 600; color: var(--pk-primary);">
+                            Business Credential Documents (Required)
+                        </h3>
+                        <p class="pk-help-text" style="margin: 4px 0 14px;">
+                            Attach at least one verifiable commercial document (Business License, Tax Registration, or Resale Permit). Supported formats: PDF, JPG, PNG, WEBP (maximum 10 MB per file).
+                        </p>
+
+                        <div class="pk-stack-sm">
+                            <div class="pk-file-slot">
+                                <div class="pk-field" style="margin-bottom: 0;">
+                                    <label for="bv_doc_type_0" class="pk-label pk-label--required">Document 1 Type</label>
+                                    <select id="bv_doc_type_0" name="document_types[0]" class="pk-select">
+                                        @php $docType0 = old('document_types.0', 'business_license'); @endphp
+                                        <option value="business_license" {{ $docType0 === 'business_license' ? 'selected' : '' }}>Business Registration / License</option>
+                                        <option value="tax_certificate" {{ $docType0 === 'tax_certificate' ? 'selected' : '' }}>Tax ID / VAT / GST Certificate</option>
+                                        <option value="resale_permit" {{ $docType0 === 'resale_permit' ? 'selected' : '' }}>Resale Certificate / Permit</option>
+                                        <option value="identity_proof" {{ $docType0 === 'identity_proof' ? 'selected' : '' }}>Authorized Signatory ID</option>
+                                        <option value="other" {{ $docType0 === 'other' ? 'selected' : '' }}>Other Supporting Document</option>
+                                    </select>
                                 </div>
 
-                                <div class="grid grid-cols-2 gap-4 max-sm:grid-cols-1 items-center bg-white p-3 rounded-lg border border-zinc-200">
-                                    <div>
-                                        <label class="block text-xs font-medium text-zinc-600 mb-1">Document 2 Type (Optional)</label>
-                                        <select
-                                            name="document_types[1]"
-                                            class="w-full rounded border border-zinc-300 px-2.5 py-1.5 text-xs text-zinc-800 focus:outline-none"
-                                        >
-                                            <option value="tax_certificate">Tax ID / VAT / GST Certificate</option>
-                                            <option value="resale_permit">Resale Certificate / Permit</option>
-                                            <option value="business_license">Business Registration / License</option>
-                                            <option value="identity_proof">Authorized Signatory ID</option>
-                                            <option value="other">Other Supporting Document</option>
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-medium text-zinc-600 mb-1">Choose File</label>
-                                        <input
-                                            type="file"
-                                            name="documents[1]"
-                                            accept=".pdf,.jpg,.jpeg,.png,.webp"
-                                            class="text-xs text-zinc-600 file:mr-3 file:py-1.5 file:px-3 file:rounded file:border-0 file:text-xs file:font-semibold file:bg-zinc-800 file:text-white hover:file:bg-zinc-700"
-                                        >
-                                    </div>
+                                <div class="pk-field" style="margin-bottom: 0;">
+                                    <label for="bv_doc_file_0" class="pk-label pk-label--required">Choose Credential File</label>
+                                    <input
+                                        type="file"
+                                        id="bv_doc_file_0"
+                                        name="documents[0]"
+                                        required
+                                        accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                        class="pk-file-input"
+                                    >
+                                </div>
+                            </div>
+
+                            <div class="pk-file-slot">
+                                <div class="pk-field" style="margin-bottom: 0;">
+                                    <label for="bv_doc_type_1" class="pk-label">Document 2 Type (Optional)</label>
+                                    <select id="bv_doc_type_1" name="document_types[1]" class="pk-select">
+                                        @php $docType1 = old('document_types.1', 'tax_certificate'); @endphp
+                                        <option value="tax_certificate" {{ $docType1 === 'tax_certificate' ? 'selected' : '' }}>Tax ID / VAT / GST Certificate</option>
+                                        <option value="resale_permit" {{ $docType1 === 'resale_permit' ? 'selected' : '' }}>Resale Certificate / Permit</option>
+                                        <option value="business_license" {{ $docType1 === 'business_license' ? 'selected' : '' }}>Business Registration / License</option>
+                                        <option value="identity_proof" {{ $docType1 === 'identity_proof' ? 'selected' : '' }}>Authorized Signatory ID</option>
+                                        <option value="other" {{ $docType1 === 'other' ? 'selected' : '' }}>Other Supporting Document</option>
+                                    </select>
+                                </div>
+
+                                <div class="pk-field" style="margin-bottom: 0;">
+                                    <label for="bv_doc_file_1" class="pk-label">Additional File (Optional)</label>
+                                    <input
+                                        type="file"
+                                        id="bv_doc_file_1"
+                                        name="documents[1]"
+                                        accept=".pdf,.jpg,.jpeg,.png,.webp"
+                                        class="pk-file-input"
+                                    >
                                 </div>
                             </div>
                         </div>
 
-                        <div class="flex items-center justify-end gap-3 pt-3 border-t border-zinc-200">
-                            <button
-                                type="submit"
-                                class="primary-button px-6 py-2.5 text-sm"
-                            >
-                                {{ $status === 'rejected' ? 'Submit Corrected Application' : 'Submit Application for Review' }}
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            @endif
+                        @if ($errors->has('documents') || $errors->has('documents.*'))
+                            <p class="pk-error-text" style="margin: 10px 0 0;">
+                                {{ $errors->first('documents') ?: $errors->first('documents.*') }}
+                            </p>
+                        @endif
+                    </div>
 
-        </div>
+                    <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--pk-border); display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px;">
+                        <span class="pk-help-text">
+                            All uploaded credentials are encrypted at rest and reviewed strictly for trade compliance.
+                        </span>
+
+                        <x-shop::portal.button type="submit" variant="primary">
+                            {{ $status === 'rejected' ? 'Submit Corrected Application' : 'Submit Application for Review' }}
+                        </x-shop::portal.button>
+                    </div>
+                </form>
+            </x-shop::portal.card>
+        @endif
     </div>
-</x-shop::layouts.account>
 
+    @pushOnce('scripts')
+        <script>
+            (function () {
+                function bindVerificationGuard() {
+                    var form = document.getElementById('pk-buyer-verification-form');
+                    if (!form || form.dataset.pkBound) return;
+                    form.dataset.pkBound = '1';
+
+                    form.addEventListener('submit', function (e) {
+                        if (form.dataset.pkSubmitted === '1') {
+                            e.preventDefault();
+                            return;
+                        }
+                        if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+                            return;
+                        }
+                        form.dataset.pkSubmitted = '1';
+                        var btn = form.querySelector('button[type="submit"]');
+                        if (btn) {
+                            var label = form.getAttribute('data-pk-guard-submit') || 'Submitting...';
+                            setTimeout(function () {
+                                btn.disabled = true;
+                                btn.textContent = label;
+                            }, 0);
+                        }
+                    });
+                }
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', bindVerificationGuard);
+                } else {
+                    bindVerificationGuard();
+                }
+            })();
+        </script>
+    @endPushOnce
+</x-shop::layouts.account>

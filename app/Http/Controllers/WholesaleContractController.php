@@ -43,7 +43,7 @@ class WholesaleContractController extends Controller
             ->where('status', MemberContract::STATUS_SENT)
             ->count();
 
-        return view('vendor.shop.customers.account.contracts.index', compact('contracts', 'templates', 'pendingActionCount'));
+        return view('shop::customers.account.contracts.index', compact('contracts', 'templates', 'pendingActionCount'));
     }
 
     /**
@@ -60,7 +60,7 @@ class WholesaleContractController extends Controller
 
         $contract->evaluateExpiry();
 
-        return view('vendor.shop.customers.account.contracts.view', compact('contract'));
+        return view('shop::customers.account.contracts.view', compact('contract'));
     }
 
     /**
@@ -135,7 +135,7 @@ class WholesaleContractController extends Controller
             ->orderBy('title')
             ->get();
 
-        return view('vendor.shop.customers.account.contracts.templates', compact('templates'));
+        return view('shop::customers.account.contracts.templates', compact('templates'));
     }
 
     /**

@@ -1,124 +1,158 @@
+{{--
+    PurNatureK Members Portal — New Inquiry Conversation
+    (shop::customers.account.conversations.create)
+--}}
 <x-shop::layouts.account>
     <x-slot:title>
         New Inquiry — Message Admin
     </x-slot>
 
-    <x-shop::layouts.account.navigation />
-
-    <div class="pk-main">
-        <div class="flex flex-col gap-6">
-
-            <!-- Breadcrumb / Back -->
-            <div>
-                <a
-                    href="{{ route('shop.customers.account.conversations.index') }}"
-                    class="inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700 hover:text-emerald-900"
-                >
-                    &larr; Back to Conversations
-                </a>
-            </div>
-
-            <!-- Error Summary -->
-            @if (isset($errors) && $errors->any())
-                <div class="rounded-xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
-                    <p class="font-semibold mb-1">Please correct the following errors:</p>
-                    <ul class="list-disc pl-5">
-                        @foreach ($errors->all() as $error)
-                            <li>{{ $error }}</li>
-                        @endforeach
-                    </ul>
-                </div>
-            @endif
-
-            <!-- Form Card -->
-            <div class="rounded-xl border border-zinc-200 bg-white p-6 max-sm:p-4">
-                <div class="border-b border-zinc-200 pb-4 mb-6">
-                    <h1 class="text-xl font-bold text-zinc-900">Start a New Conversation</h1>
-                    <p class="text-sm text-zinc-500 mt-1">
-                        Send a message directly to PurNatureK administrators regarding products, pricing, supply, or documentation.
-                    </p>
-                </div>
-
-                <form
-                    action="{{ route('shop.customers.account.conversations.store') }}"
-                    method="POST"
-                    class="space-y-6"
-                >
-                    @csrf
-
-                    <!-- Subject -->
-                    <div>
-                        <label for="subject" class="block text-sm font-semibold text-zinc-700 mb-1">
-                            Inquiry Subject <span class="text-rose-600">*</span>
-                        </label>
-                        <input
-                            type="text"
-                            id="subject"
-                            name="subject"
-                            value="{{ old('subject', $prefilledSubject) }}"
-                            placeholder="e.g. Inquiring regarding bulk delivery timeline for Lavender Essential Oil"
-                            class="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
-                            required
-                        >
-                    </div>
-
-                    <!-- Category -->
-                    <div>
-                        <label for="category" class="block text-sm font-semibold text-zinc-700 mb-1">
-                            Inquiry Category <span class="text-rose-600">*</span>
-                        </label>
-                        <select
-                            id="category"
-                            name="category"
-                            class="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
-                            required
-                        >
-                            @foreach ($categories as $catKey => $catLabel)
-                                <option value="{{ $catKey }}" {{ old('category', $prefilledCategory) === $catKey ? 'selected' : '' }}>
-                                    {{ $catLabel }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <!-- Message Body -->
-                    <div>
-                        <label for="message" class="block text-sm font-semibold text-zinc-700 mb-1">
-                            Message <span class="text-rose-600">*</span>
-                        </label>
-                        <textarea
-                            id="message"
-                            name="message"
-                            rows="6"
-                            placeholder="Please describe your wholesale inquiry or requirements in detail..."
-                            class="w-full rounded-lg border border-zinc-300 px-4 py-2.5 text-sm text-zinc-900 shadow-sm focus:border-emerald-600 focus:outline-none focus:ring-1 focus:ring-emerald-600"
-                            required
-                        >{{ old('message') }}</textarea>
-                        <p class="mt-1.5 text-xs text-zinc-400">
-                            Minimum 5 characters, up to 5,000 characters. Text-only message.
-                        </p>
-                    </div>
-
-                    <!-- Submit Actions -->
-                    <div class="flex items-center gap-4 pt-2">
-                        <button
-                            type="submit"
-                            class="rounded-lg bg-emerald-700 px-6 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-emerald-800"
-                        >
-                            Send Message
-                        </button>
-
-                        <a
-                            href="{{ route('shop.customers.account.conversations.index') }}"
-                            class="text-sm font-semibold text-zinc-600 hover:text-zinc-800"
-                        >
-                            Cancel
-                        </a>
-                    </div>
-                </form>
-            </div>
-
-        </div>
+    <div class="max-md:hidden">
+        <x-shop::layouts.account.navigation />
     </div>
-</x-shop::layouts.account>
 
+    <div class="pk-main pk-stack-md" v-pre>
+        <div>
+            <a href="{{ route('shop.customers.account.conversations.index') }}" class="pk-back-link">
+                &larr; Back to Conversations
+            </a>
+        </div>
+
+        @if (isset($errors) && $errors->any())
+            <x-shop::portal.alert variant="danger" title="Please correct the following errors">
+                <ul style="margin: 6px 0 0; padding-left: 18px;">
+                    @foreach ($errors->all() as $error)
+                        <li>{{ $error }}</li>
+                    @endforeach
+                </ul>
+            </x-shop::portal.alert>
+        @endif
+
+        <x-shop::portal.page-header
+            eyebrow="Direct Wholesale Desk"
+            title="Start a New Conversation"
+            subtitle="Send a private message directly to PurNatureK administration regarding botanical specifications, commercial pricing, or trade documentation."
+        />
+
+        <x-shop::portal.card
+            eyebrow="Inquiry Details"
+            title="Compose Wholesale Inquiry"
+        >
+            <form
+                action="{{ route('shop.customers.account.conversations.store') }}"
+                method="POST"
+                id="pk-conversation-create-form"
+                data-pk-guard-submit="Sending Message..."
+            >
+                @csrf
+
+                <div class="pk-field">
+                    <label for="subject" class="pk-label pk-label--required">
+                        Inquiry Subject
+                    </label>
+                    <input
+                        type="text"
+                        id="subject"
+                        name="subject"
+                        value="{{ old('subject', $prefilledSubject) }}"
+                        placeholder="e.g. Requesting batch COA and 100kg lead time for botanical extract"
+                        class="pk-input @error('subject') pk-input--error @enderror"
+                        required
+                    >
+                    @error('subject')
+                        <span class="pk-error-text">{{ $message }}</span>
+                    @enderror
+                </div>
+
+                <div class="pk-field">
+                    <label for="category" class="pk-label pk-label--required">
+                        Inquiry Category
+                    </label>
+                    <select
+                        id="category"
+                        name="category"
+                        class="pk-select @error('category') pk-select--error @enderror"
+                        required
+                    >
+                        @foreach ($categories as $catKey => $catLabel)
+                            <option value="{{ $catKey }}" {{ old('category', $prefilledCategory) === $catKey ? 'selected' : '' }}>
+                                {{ $catLabel }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('category')
+                        <span class="pk-error-text">{{ $message }}</span>
+                    @enderror
+                </div>
+
+                <div class="pk-field">
+                    <label for="message" class="pk-label pk-label--required">
+                        Message
+                    </label>
+                    <textarea
+                        id="message"
+                        name="message"
+                        rows="6"
+                        placeholder="Please describe your wholesale volume, destination, documentation, or formulation requirements..."
+                        class="pk-textarea @error('message') pk-textarea--error @enderror"
+                        required
+                    >{{ old('message') }}</textarea>
+                    <span class="pk-help-text">
+                        Minimum 5 characters, up to 5,000 characters. Plain-text inquiry thread.
+                    </span>
+                    @error('message')
+                        <span class="pk-error-text">{{ $message }}</span>
+                    @enderror
+                </div>
+
+                <div style="margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--pk-border); display: flex; flex-wrap: wrap; align-items: center; gap: 12px;">
+                    <x-shop::portal.button type="submit" variant="primary">
+                        Send Message
+                    </x-shop::portal.button>
+
+                    <x-shop::portal.button
+                        :href="route('shop.customers.account.conversations.index')"
+                        variant="secondary"
+                    >
+                        Cancel
+                    </x-shop::portal.button>
+                </div>
+            </form>
+        </x-shop::portal.card>
+    </div>
+
+    @pushOnce('scripts')
+        <script>
+            (function () {
+                function bindCreateGuard() {
+                    var form = document.getElementById('pk-conversation-create-form');
+                    if (!form || form.dataset.pkBound) return;
+                    form.dataset.pkBound = '1';
+
+                    form.addEventListener('submit', function (e) {
+                        if (form.dataset.pkSubmitted === '1') {
+                            e.preventDefault();
+                            return;
+                        }
+                        if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+                            return;
+                        }
+                        form.dataset.pkSubmitted = '1';
+                        var btn = form.querySelector('button[type="submit"]');
+                        if (btn) {
+                            setTimeout(function () {
+                                btn.disabled = true;
+                                btn.textContent = form.getAttribute('data-pk-guard-submit') || 'Sending...';
+                            }, 0);
+                        }
+                    });
+                }
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', bindCreateGuard);
+                } else {
+                    bindCreateGuard();
+                }
+            })();
+        </script>
+    @endPushOnce
+</x-shop::layouts.account>

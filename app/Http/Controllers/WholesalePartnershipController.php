@@ -25,7 +25,7 @@ class WholesalePartnershipController extends Controller
                 ->get()
             : collect([]);
 
-        return view('vendor.shop.customers.account.partnership_information.index', compact('page', 'sections', 'isPublished'));
+        return view('shop::customers.account.partnership_information.index', compact('page', 'sections', 'isPublished'));
     }
 }
 
