@@ -22,7 +22,7 @@
     <div class="pk-stack-md">
         <x-shop::portal.page-header
             eyebrow="Account Settings"
-            title="Account &amp; Corporate Profile"
+            title="Account & Corporate Profile"
             subtitle="Manage your personal member credentials and affiliated corporate buyer profile."
         >
             <x-slot:actions>

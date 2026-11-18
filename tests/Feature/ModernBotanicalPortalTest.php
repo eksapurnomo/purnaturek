@@ -820,3 +820,52 @@ test('admin ai assistant, magic ai, and generic configuration routes resolve wit
         ->get('/admin/configuration/general/general')
         ->assertOk();
 });
+
+test('profile, login, and core member portal pages avoid double-escaped HTML entities while preserving escaping of user data', function () {
+    // 1. Guest login page renders single-escaped ampersands (no &amp;amp; or &#x20;)
+    $loginHtml = $this->get(route('shop.customer.session.index'))
+        ->assertOk()
+        ->getContent();
+
+    expect($loginHtml)
+        ->toContain('Premium Kratom. Wholesale &amp; Bulk Supply.')
+        ->toContain('Mitragyna speciosa Powder &amp; Extract.')
+        ->not->toContain('&amp;amp;')
+        ->not->toContain('&#x20;');
+
+    // 2. Customer profile page renders Account & Corporate Profile cleanly while still escaping user-supplied fields
+    $member = makePortalCustomer([
+        'first_name' => 'A&B <script>alert(1)</script>',
+    ]);
+
+    $profileHtml = $this->actingAs($member, 'customer')
+        ->get(route('shop.customers.account.profile.index'))
+        ->assertOk()
+        ->getContent();
+
+    expect($profileHtml)
+        ->toContain('<h1 class="pk-page-header__title">Account &amp; Corporate Profile</h1>')
+        ->not->toContain('&amp;amp;')
+        ->not->toContain('&#x20;')
+        ->toContain('A&amp;B &lt;script&gt;alert(1)&lt;/script&gt;')
+        ->not->toContain('A&B <script>alert(1)</script>');
+
+    // 3. Other modernized portal pages render without double-escaped entities or &#x20;
+    foreach ([
+        route('shop.customers.account.index'),
+        route('shop.customers.account.contracts.index'),
+        route('shop.customers.account.buyer_verification.index'),
+        route('shop.customers.account.conversations.index'),
+        route('shop.customers.account.company_supply.index'),
+        route('shop.customers.account.partnership_information.index'),
+    ] as $url) {
+        $html = $this->actingAs($member, 'customer')
+            ->get($url)
+            ->assertOk()
+            ->getContent();
+
+        expect($html)
+            ->not->toContain('&amp;amp;')
+            ->not->toContain('&#x20;');
+    }
+});
