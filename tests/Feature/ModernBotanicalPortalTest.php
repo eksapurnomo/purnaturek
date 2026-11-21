@@ -4,9 +4,11 @@ use App\Models\BuyerVerification;
 use App\Models\BuyerVerificationDocument;
 use App\Models\MemberContract;
 use App\Models\MemberConversation;
+use App\Models\ProductDocument;
 use App\Support\BuyerVerificationManager;
 use App\Support\ContractAgreementManager;
 use App\Support\MemberConversationManager;
+use App\Support\ProductDocumentationManager;
 use App\Support\WholesalePricingManager;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
@@ -819,6 +821,79 @@ test('admin ai assistant, magic ai, and generic configuration routes resolve wit
     $this->actingAs($admin, 'admin')
         ->get('/admin/configuration/general/general')
         ->assertOk();
+});
+
+test('guests cannot access product COA documents, authenticated members access published COAs only, and internal/invoice origin fields remain intact', function () {
+    Storage::fake('private');
+
+    $product = Product::first();
+    expect($product)->not->toBeNull();
+
+    Storage::disk('private')->put('product_documents/published-coa.pdf', '%PDF-1.4 published-coa');
+    Storage::disk('private')->put('product_documents/draft-coa.pdf', '%PDF-1.4 draft-coa');
+
+    $publishedCoa = ProductDocument::create([
+        'product_id'        => $product->id,
+        'title'             => 'Batch Analytical COA',
+        'document_type'     => ProductDocument::TYPE_COA,
+        'file_path'         => 'product_documents/published-coa.pdf',
+        'original_filename' => 'batch-coa.pdf',
+        'mime_type'         => 'application/pdf',
+        'file_size'         => 22,
+        'status'            => ProductDocument::STATUS_PUBLISHED,
+        'sort_order'        => 1,
+    ]);
+
+    $draftCoa = ProductDocument::create([
+        'product_id'        => $product->id,
+        'title'             => 'Unpublished Internal COA',
+        'document_type'     => ProductDocument::TYPE_COA,
+        'file_path'         => 'product_documents/draft-coa.pdf',
+        'original_filename' => 'draft-coa.pdf',
+        'mime_type'         => 'application/pdf',
+        'file_size'         => 18,
+        'status'            => ProductDocument::STATUS_DRAFT,
+        'sort_order'        => 2,
+    ]);
+
+    // 1. Guests must never access private COA download/preview URLs
+    $this->get(route('shop.customers.account.product_documents.download', [$product->id, $publishedCoa->id]))
+        ->assertRedirect(route('shop.customer.session.index'));
+
+    $this->get(route('shop.customers.account.product_documents.preview', [$product->id, $publishedCoa->id]))
+        ->assertRedirect(route('shop.customer.session.index'));
+
+    // 2. Authenticated members can download/preview published COAs, while draft COAs remain blocked (404)
+    $member = makePortalCustomer();
+
+    $downloadRes = $this->actingAs($member, 'customer')
+        ->get(route('shop.customers.account.product_documents.download', [$product->id, $publishedCoa->id]))
+        ->assertOk();
+    expect($downloadRes->streamedContent())->toBe('%PDF-1.4 published-coa');
+
+    $this->actingAs($member, 'customer')
+        ->get(route('shop.customers.account.product_documents.preview', [$product->id, $publishedCoa->id]))
+        ->assertOk();
+
+    $this->actingAs($member, 'customer')
+        ->get(route('shop.customers.account.product_documents.download', [$product->id, $draftCoa->id]))
+        ->assertNotFound();
+
+    // 3. Internal origin fields & native invoice/order country fields remain preserved
+    $specs = ProductDocumentationManager::getProductSpecifications($product);
+    if (filled($product->brand)) {
+        expect($specs->pluck('label')->all())->toContain('Brand / Origin');
+    }
+
+    $invoicePdf = file_get_contents(base_path('packages/Webkul/Shop/src/Resources/views/customers/account/orders/pdf.blade.php'));
+    $orderAddressView = file_get_contents(base_path('packages/Webkul/Shop/src/Resources/views/customers/account/orders/view/address.blade.php'));
+
+    expect($invoicePdf)
+        ->toContain('sales.shipping.origin.country')
+        ->toContain('billing_address->country')
+        ->toContain('shipping_address->country')
+        ->and($orderAddressView)
+        ->toContain('core()->country_name($address->country)');
 });
 
 test('profile, login, and core member portal pages avoid double-escaped HTML entities while preserving escaping of user data', function () {

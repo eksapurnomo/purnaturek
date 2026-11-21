@@ -208,7 +208,7 @@
                         <span class="pk-pillar-card__num">01 // WHOLESALE SUPPLY</span>
                         <h3 class="pk-pillar-card__title">Structured Bulk Procurement</h3>
                         <p class="pk-pillar-card__text">
-                            Consistent sourcing for standardized Mitragyna speciosa powder and extract SKUs with transparent MOQ tiers and domestic fulfillment options.
+                            Structured US wholesale supply for standardized Mitragyna speciosa powder and extract SKUs with transparent MOQ tiers and domestic fulfillment options.
                         </p>
                     </article>
 

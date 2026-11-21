@@ -10,16 +10,16 @@
 @endphp
 
 @push('meta')
-    <meta name="keywords" content="PurNatureK, wholesale application, b2b registration, bulk botanicals, commercial sourcing"/>
+    <meta name="keywords" content="PurNatureK, wholesale application, b2b registration, bulk botanicals, commercial wholesale"/>
 @endPush
 
 <x-shop::portal.auth-shell
     title="Wholesale Member Registration — PurNatureK"
-    meta-description="Register for PurNatureK Wholesale Members Portal — Commercial botanical powders, extracts, and verified B2B sourcing."
+    meta-description="Register for PurNatureK Wholesale Members Portal — Commercial botanical powders, extracts, and US B2B wholesale supply."
     eyebrow="Wholesale Onboarding"
     heading="Create Wholesale Account"
-    subtitle="Build your wholesale partnership with verified sourcing for Mitragyna speciosa powder and extract."
-    visual-eyebrow="PurNatureK B2B Sourcing"
+    subtitle="Build your wholesale partnership with US-based bulk supply for Mitragyna speciosa powder and extract."
+    visual-eyebrow="PurNatureK US Wholesale"
     visual-heading="Quality. Compliance. Direct B2B Partnership."
     visual-lead="Direct commercial access to standardized botanical powders, active extracts, and tailored supply schedules for commercial formulators, botanical brands, and wholesale distributors."
 >

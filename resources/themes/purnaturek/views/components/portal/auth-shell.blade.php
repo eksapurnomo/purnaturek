@@ -4,7 +4,7 @@
     'eyebrow'         => 'Commercial Portal Access',
     'heading',
     'subtitle'        => null,
-    'visualEyebrow'   => 'PurNatureK B2B Sourcing',
+    'visualEyebrow'   => 'PurNatureK US Wholesale',
     'visualHeading'   => 'Premium Kratom. Wholesale & Bulk Supply.',
     'visualLead'      => 'Your US-Based Wholesale Partner for Mitragyna speciosa Powder & Extract. Built for commercial formulators, botanical brands, and wholesale distributors.',
 ])
