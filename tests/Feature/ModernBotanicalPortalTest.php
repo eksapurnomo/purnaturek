@@ -10,6 +10,7 @@ use App\Support\ContractAgreementManager;
 use App\Support\MemberConversationManager;
 use App\Support\ProductDocumentationManager;
 use App\Support\WholesalePricingManager;
+use Database\Seeders\PurNatureKCatalogSeeder;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Hash;
@@ -944,3 +945,103 @@ test('profile, login, and core member portal pages avoid double-escaped HTML ent
             ->not->toContain('&#x20;');
     }
 });
+
+test('initial two-product wholesale catalog is properly configured with approved assets, Model B pricing, and strict privacy/authorization gating', function () {
+    // 1. Ensure catalog is seeded
+    $seeder = app(PurNatureKCatalogSeeder::class);
+    $seeder->run();
+
+    // 2. Both products exist and match approved SKU and URL keys
+    $powder = Product::where('sku', 'PUR-KRATOM-POWDER')->first();
+    $extract = Product::where('sku', 'PUR-KRATOM-EXTRACT')->first();
+
+    expect($powder)->not->toBeNull()
+        ->and($powder->name)->toBe('Kratom Powder')
+        ->and($powder->url_key)->toBe('kratom-powder')
+        ->and($powder->status)->toBe(1)
+        ->and($powder->visible_individually)->toBe(1)
+        ->and($powder->guest_checkout)->toBe(0);
+
+    expect($extract)->not->toBeNull()
+        ->and($extract->name)->toBe('Kratom Extract')
+        ->and($extract->url_key)->toBe('kratom-extract')
+        ->and($extract->status)->toBe(1)
+        ->and($extract->visible_individually)->toBe(1)
+        ->and($extract->guest_checkout)->toBe(0);
+
+    // 3. Both products have images from approved landing page assets
+    expect($powder->images)->toHaveCount(1)
+        ->and($extract->images)->toHaveCount(1);
+
+    $powderImgPath = $powder->images->first()->path;
+    $extractImgPath = $extract->images->first()->path;
+
+    expect(Storage::disk('public')->exists($powderImgPath))->toBeTrue()
+        ->and(Storage::disk('public')->exists($extractImgPath))->toBeTrue();
+
+    // Verify SHA-256 matches exact approved original images from landing page repository
+    $powderDiskBytes = Storage::disk('public')->get($powderImgPath);
+    $extractDiskBytes = Storage::disk('public')->get($extractImgPath);
+
+    expect(hash('sha256', $powderDiskBytes))->toBe('74f598e5cc8408b3182da9e3275f9af846eb547863f4b68bf2ea8e54fa2b5759')
+        ->and(hash('sha256', $extractDiskBytes))->toBe('fa1819ae308eefb6858a488bf3e645603841057d9d3201a5f8ab2b0322269f2e');
+
+    // 4. Model B wholesale pricing configuration (no invented prices, MOQ, or stock)
+    $powderPricing = WholesalePricingManager::formatForMember($powder);
+    $extractPricing = WholesalePricingManager::formatForMember($extract);
+
+    expect($powderPricing['mode'])->toBe(WholesalePricingManager::MODE_CONTACT)
+        ->and($powderPricing['price_display'])->toBe('Contact for Price')
+        ->and($powderPricing['min_price_formatted'])->toBeNull()
+        ->and($powderPricing['max_price_formatted'])->toBeNull()
+        ->and($powderPricing['moq_display'])->toBeNull()
+        ->and(WholesalePricingManager::requiresApprovedQuotation($powder))->toBeTrue();
+
+    expect($extractPricing['mode'])->toBe(WholesalePricingManager::MODE_CONTACT)
+        ->and($extractPricing['price_display'])->toBe('Contact for Price')
+        ->and($extractPricing['min_price_formatted'])->toBeNull()
+        ->and($extractPricing['max_price_formatted'])->toBeNull()
+        ->and($extractPricing['moq_display'])->toBeNull()
+        ->and(WholesalePricingManager::requiresApprovedQuotation($extract))->toBeTrue();
+
+    // 5. Guests are strictly blocked from PDPs and redirected to login
+    $this->get('/kratom-powder')->assertRedirect(route('shop.customer.session.index'));
+    $this->get('/kratom-extract')->assertRedirect(route('shop.customer.session.index'));
+
+    // 6. Authenticated members can view both products in workspace catalog and on PDPs
+    $member = makePortalCustomer();
+
+    $catalogResponse = $this->actingAs($member, 'customer')
+        ->get(route('shop.customers.account.index'))
+        ->assertOk();
+
+    $catalogResponse->assertSee('Kratom Powder', false);
+    $catalogResponse->assertSee('Kratom Extract', false);
+    $catalogResponse->assertSee('PUR-KRATOM-POWDER', false);
+    $catalogResponse->assertSee('PUR-KRATOM-EXTRACT', false);
+    $catalogResponse->assertSee('Contact for Price', false);
+
+    $powderPdp = $this->actingAs($member, 'customer')
+        ->get('/kratom-powder')
+        ->assertOk();
+
+    $powderPdp->assertSee('Kratom Powder', false);
+    $powderPdp->assertSee('PUR-KRATOM-POWDER', false);
+    $powderPdp->assertSee('Contact for Price', false);
+    $powderPdp->assertSee('pk-product__hero', false);
+
+    $extractPdp = $this->actingAs($member, 'customer')
+        ->get('/kratom-extract')
+        ->assertOk();
+
+    $extractPdp->assertSee('Kratom Extract', false);
+    $extractPdp->assertSee('PUR-KRATOM-EXTRACT', false);
+    $extractPdp->assertSee('Contact for Price', false);
+    $extractPdp->assertSee('pk-product__hero', false);
+
+    // 7. Unverified members cannot perform transactions or checkout
+    $this->actingAs($member, 'customer')
+        ->get(route('shop.checkout.onepage.index'))
+        ->assertRedirect(route('shop.customers.account.buyer_verification.index'));
+});
+
