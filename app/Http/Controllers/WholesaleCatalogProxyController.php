@@ -15,23 +15,28 @@ class WholesaleCatalogProxyController extends ProductsCategoriesProxyController
     {
         $slugOrURLKey = urldecode(trim($request->getPathInfo(), '/'));
 
-        if ($slugOrURLKey !== '' && ! $this->categoryRepository->findBySlug($slugOrURLKey)) {
-            $searchEngine = core()->getConfigData('catalog.products.search.engine') === 'elastic'
-                ? core()->getConfigData('catalog.products.search.storefront_mode')
-                : 'database';
+        if ($slugOrURLKey !== '') {
+            $category = $this->categoryRepository->findBySlug($slugOrURLKey);
+            $hasActiveCategory = $category && $category->status && $category->isAvailableInChannel();
 
-            $product = $this->productRepository
-                ->setSearchEngine($searchEngine ?? 'database')
-                ->findBySlug($slugOrURLKey);
+            if (! $hasActiveCategory) {
+                $searchEngine = core()->getConfigData('catalog.products.search.engine') === 'elastic'
+                    ? core()->getConfigData('catalog.products.search.storefront_mode')
+                    : 'database';
 
-            if (
-                $product
-                && $product->url_key
-                && $product->visible_individually
-                && $product->status
-                && $product->isAvailableInChannel()
-            ) {
-                return redirect()->route('shop.catalog.show', $product->url_key);
+                $product = $this->productRepository
+                    ->setSearchEngine($searchEngine ?? 'database')
+                    ->findBySlug($slugOrURLKey);
+
+                if (
+                    $product
+                    && $product->url_key
+                    && $product->visible_individually
+                    && $product->status
+                    && $product->isAvailableInChannel()
+                ) {
+                    return redirect()->route('shop.catalog.show', $product->url_key);
+                }
             }
         }
 

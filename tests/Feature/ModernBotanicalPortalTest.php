@@ -1031,7 +1031,20 @@ test('initial two-product wholesale catalog is properly configured with approved
     // 6. Authenticated members can browse /catalog and view complete PDPs on /catalog/kratom-powder & /catalog/kratom-extract
     $member = makePortalCustomer();
 
-    // Legacy /{slug} redirects authenticated member cleanly to canonical /catalog/{slug}
+    // Legacy /{slug} redirects authenticated member cleanly to canonical /catalog/{slug},
+    // even if an inactive/hidden category in the database reuses the same slug.
+    \Webkul\Category\Models\Category::create([
+        'position' => 99,
+        'status'   => 0,
+        'en'       => [
+            'name'             => 'Legacy Inactive Kratom Powder Category',
+            'slug'             => 'kratom-powder',
+            'meta_title'       => 'Legacy',
+            'meta_description' => 'Legacy',
+            'meta_keywords'    => 'Legacy',
+        ],
+    ]);
+
     $this->actingAs($member, 'customer')
         ->get('/kratom-powder')
         ->assertRedirect('/catalog/kratom-powder');
