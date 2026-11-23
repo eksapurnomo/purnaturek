@@ -16,7 +16,10 @@ class ProtectPrivateCatalog
      * be accessible to unauthenticated guests or stored in the public response cache.
      */
     public const PROTECTED_ROUTES = [
+        'shop.catalog.index',
+        'shop.catalog.show',
         'shop.product_or_category.index',
+        'shop.webmcp.product',
         'shop.search.index',
         'shop.search.upload',
         'shop.compare.index',
@@ -139,9 +142,13 @@ class ProtectPrivateCatalog
             if ($product) {
                 $pricing = WholesalePricingManager::formatForMember($product);
                 $item['min_price'] = $pricing['price_display'];
+                $item['formatted_price'] = $pricing['price_display'];
                 $item['price_html'] = e($pricing['price_display']);
+                $item['prices'] = null;
+                $item['catalog_url'] = $product->url_key ? route('shop.catalog.show', $product->url_key) : null;
                 $item['wholesale_pricing'] = [
                     'mode'                => $pricing['mode'],
+                    'mode_label'          => $pricing['mode_label'],
                     'price_display'       => $pricing['price_display'],
                     'moq_display'         => $pricing['moq_display'],
                     'unit'                => $pricing['unit'],
@@ -149,7 +156,9 @@ class ProtectPrivateCatalog
                 ];
             } else {
                 $item['min_price'] = 'Contact for Price';
+                $item['formatted_price'] = 'Contact for Price';
                 $item['price_html'] = 'Contact for Price';
+                $item['prices'] = null;
             }
         }
         unset($item);

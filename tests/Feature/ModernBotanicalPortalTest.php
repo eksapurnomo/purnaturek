@@ -102,6 +102,7 @@ test('authenticated members can view all modernized workspace, catalog, service,
 
     $memberUrls = [
         route('shop.home.index'),
+        route('shop.catalog.index'),
         route('shop.customers.account.index'),
         route('shop.customers.account.profile.index'),
         route('shop.customers.account.buyer_verification.index'),
@@ -134,7 +135,12 @@ test('authenticated members can view all modernized workspace, catalog, service,
         ->assertSee('pk-stepper', false);
 
     if ($product = Product::first()) {
-        $pdpResponse = $this->actingAs($customer, 'customer')->get('/' . $product->url_key);
+        $this->actingAs($customer, 'customer')
+            ->get('/' . $product->url_key)
+            ->assertRedirect(route('shop.catalog.show', $product->url_key));
+
+        $pdpResponse = $this->actingAs($customer, 'customer')
+            ->get(route('shop.catalog.show', $product->url_key));
         $pdpResponse->assertOk();
         $pdpResponse->assertSee('pk-product__hero', false);
         $pdpResponse->assertSee('pk_recent_' . $customer->id, false);
@@ -771,7 +777,8 @@ test('group a shop namespace routes and views resolve and render cleanly when de
         ];
 
         if ($product = Product::first()) {
-            $memberRoutes[] = '/' . $product->url_key;
+            $memberRoutes[] = route('shop.catalog.index');
+            $memberRoutes[] = route('shop.catalog.show', $product->url_key);
         }
 
         foreach ($memberRoutes as $url) {
@@ -986,62 +993,225 @@ test('initial two-product wholesale catalog is properly configured with approved
     expect(hash('sha256', $powderDiskBytes))->toBe('74f598e5cc8408b3182da9e3275f9af846eb547863f4b68bf2ea8e54fa2b5759')
         ->and(hash('sha256', $extractDiskBytes))->toBe('fa1819ae308eefb6858a488bf3e645603841057d9d3201a5f8ab2b0322269f2e');
 
-    // 4. Model B wholesale pricing configuration (no invented prices, MOQ, or stock)
+    // 4. Centralized flexible pricing configuration (BULK_CONTACT default, no invented prices, MOQ, packaging, or weight)
     $powderPricing = WholesalePricingManager::formatForMember($powder);
     $extractPricing = WholesalePricingManager::formatForMember($extract);
 
-    expect($powderPricing['mode'])->toBe(WholesalePricingManager::MODE_CONTACT)
+    expect($powderPricing['mode'])->toBe(WholesalePricingManager::MODE_BULK_CONTACT)
+        ->and($powderPricing['is_contact'])->toBeTrue()
         ->and($powderPricing['price_display'])->toBe('Contact for Price')
         ->and($powderPricing['min_price_formatted'])->toBeNull()
         ->and($powderPricing['max_price_formatted'])->toBeNull()
         ->and($powderPricing['moq_display'])->toBeNull()
+        ->and($powderPricing['unit'])->toBeNull()
         ->and(WholesalePricingManager::requiresApprovedQuotation($powder))->toBeTrue();
 
-    expect($extractPricing['mode'])->toBe(WholesalePricingManager::MODE_CONTACT)
+    expect($extractPricing['mode'])->toBe(WholesalePricingManager::MODE_BULK_CONTACT)
+        ->and($extractPricing['is_contact'])->toBeTrue()
         ->and($extractPricing['price_display'])->toBe('Contact for Price')
         ->and($extractPricing['min_price_formatted'])->toBeNull()
         ->and($extractPricing['max_price_formatted'])->toBeNull()
         ->and($extractPricing['moq_display'])->toBeNull()
+        ->and($extractPricing['unit'])->toBeNull()
         ->and(WholesalePricingManager::requiresApprovedQuotation($extract))->toBeTrue();
 
-    // 5. Guests are strictly blocked from PDPs and redirected to login
+    // Verify no fabricated Net Weight specification is emitted
+    $powderSpecs = ProductDocumentationManager::getProductSpecifications($powder);
+    expect($powderSpecs->pluck('code')->all())->toContain('sku')
+        ->not->toContain('weight');
+
+    // 5. Guests are strictly blocked from /catalog, /catalog/{slug}, legacy /{slug}, and webmcp/product
+    $this->get(route('shop.catalog.index'))->assertRedirect(route('shop.customer.session.index'));
+    $this->get('/catalog/kratom-powder')->assertRedirect(route('shop.customer.session.index'));
+    $this->get('/catalog/kratom-extract')->assertRedirect(route('shop.customer.session.index'));
     $this->get('/kratom-powder')->assertRedirect(route('shop.customer.session.index'));
     $this->get('/kratom-extract')->assertRedirect(route('shop.customer.session.index'));
+    $this->get('/webmcp/product')->assertRedirect(route('shop.customer.session.index'));
 
-    // 6. Authenticated members can view both products in workspace catalog and on PDPs
+    // 6. Authenticated members can browse /catalog and view complete PDPs on /catalog/kratom-powder & /catalog/kratom-extract
     $member = makePortalCustomer();
 
-    $catalogResponse = $this->actingAs($member, 'customer')
-        ->get(route('shop.customers.account.index'))
-        ->assertOk();
-
-    $catalogResponse->assertSee('Kratom Powder', false);
-    $catalogResponse->assertSee('Kratom Extract', false);
-    $catalogResponse->assertSee('PUR-KRATOM-POWDER', false);
-    $catalogResponse->assertSee('PUR-KRATOM-EXTRACT', false);
-    $catalogResponse->assertSee('Contact for Price', false);
-
-    $powderPdp = $this->actingAs($member, 'customer')
+    // Legacy /{slug} redirects authenticated member cleanly to canonical /catalog/{slug}
+    $this->actingAs($member, 'customer')
         ->get('/kratom-powder')
-        ->assertOk();
-
-    $powderPdp->assertSee('Kratom Powder', false);
-    $powderPdp->assertSee('PUR-KRATOM-POWDER', false);
-    $powderPdp->assertSee('Contact for Price', false);
-    $powderPdp->assertSee('pk-product__hero', false);
-
-    $extractPdp = $this->actingAs($member, 'customer')
+        ->assertRedirect('/catalog/kratom-powder');
+    $this->actingAs($member, 'customer')
         ->get('/kratom-extract')
+        ->assertRedirect('/catalog/kratom-extract');
+
+    foreach ([route('shop.customers.account.index'), route('shop.catalog.index')] as $catalogUrl) {
+        $catalogResponse = $this->actingAs($member, 'customer')
+            ->get($catalogUrl)
+            ->assertOk();
+
+        $catalogResponse->assertSee('Kratom Powder', false);
+        $catalogResponse->assertSee('Kratom Extract', false);
+        $catalogResponse->assertSee('PUR-KRATOM-POWDER', false);
+        $catalogResponse->assertSee('PUR-KRATOM-EXTRACT', false);
+        $catalogResponse->assertSee('/catalog/kratom-powder', false);
+        $catalogResponse->assertSee('/catalog/kratom-extract', false);
+        $catalogResponse->assertSee('View Product', false);
+        $catalogResponse->assertSee('Contact for Price', false);
+    }
+
+    // Individual PDP: Kratom Powder (/catalog/kratom-powder)
+    $powderPdp = $this->actingAs($member, 'customer')
+        ->get('/catalog/kratom-powder')
         ->assertOk();
 
-    $extractPdp->assertSee('Kratom Extract', false);
-    $extractPdp->assertSee('PUR-KRATOM-EXTRACT', false);
-    $extractPdp->assertSee('Contact for Price', false);
-    $extractPdp->assertSee('pk-product__hero', false);
+    $powderPdp->assertSee('Kratom Powder', false)
+        ->assertSee('PUR-KRATOM-POWDER', false)
+        ->assertSee('data-pricing-mode="BULK_CONTACT"', false)
+        ->assertSee('Contact for Price', false)
+        ->assertSee('pk-product__hero', false)
+        ->assertSee('href="' . route('shop.catalog.index') . '"', false)
+        ->assertSee('Inquire via Message Admin', false)
+        ->assertSee('Request Sample via Message Admin', false)
+        ->assertDontSee('Net Weight', false)
+        ->assertDontSee('Contact for MOQ', false)
+        ->assertDontSee('Per specification', false)
+        ->assertDontSee('&amp;amp;', false)
+        ->assertDontSee('&#x20;', false)
+        // Related product links cleanly to Kratom Extract
+        ->assertSee('/catalog/kratom-extract', false)
+        ->assertSee('Kratom Extract', false);
 
-    // 7. Unverified members cannot perform transactions or checkout
+    // Individual PDP: Kratom Extract (/catalog/kratom-extract) + Related Product back to Powder
+    $extractPdp = $this->actingAs($member, 'customer')
+        ->get('/catalog/kratom-extract')
+        ->assertOk();
+
+    $extractPdp->assertSee('Kratom Extract', false)
+        ->assertSee('PUR-KRATOM-EXTRACT', false)
+        ->assertSee('data-pricing-mode="BULK_CONTACT"', false)
+        ->assertSee('Contact for Price', false)
+        ->assertSee('pk-product__hero', false)
+        ->assertSee('href="' . route('shop.catalog.index') . '"', false)
+        ->assertSee('Inquire via Message Admin', false)
+        ->assertSee('Request Sample via Message Admin', false)
+        ->assertDontSee('Net Weight', false)
+        ->assertSee('/catalog/kratom-powder', false);
+
+    // Prefilled Message Admin links resolve cleanly for authenticated member
+    $inquiryUrl = route('shop.customers.account.conversations.create', [
+        'category' => MemberConversation::CATEGORY_PRICING_INQUIRY,
+        'subject'  => 'Wholesale Pricing Inquiry: Kratom Powder (SKU: PUR-KRATOM-POWDER)',
+    ]);
+    $this->actingAs($member, 'customer')
+        ->get($inquiryUrl)
+        ->assertOk()
+        ->assertSee('Wholesale Pricing Inquiry: Kratom Powder (SKU: PUR-KRATOM-POWDER)', false);
+
+    // Unknown catalog slug returns 404 cleanly
+    $this->actingAs($member, 'customer')
+        ->get('/catalog/nonexistent-sku-item')
+        ->assertNotFound();
+
+    // 7. Unverified members cannot perform transactions or checkout; API responses never leak raw prices
     $this->actingAs($member, 'customer')
         ->get(route('shop.checkout.onepage.index'))
         ->assertRedirect(route('shop.customers.account.buyer_verification.index'));
+
+    $apiRes = $this->actingAs($member, 'customer')
+        ->getJson(route('shop.api.products.index'))
+        ->assertOk();
+
+    $apiData = collect($apiRes->json('data'));
+    $powderApiItem = $apiData->firstWhere('sku', 'PUR-KRATOM-POWDER');
+    if ($powderApiItem) {
+        expect($powderApiItem['prices'])->toBeNull()
+            ->and($powderApiItem['min_price'])->toBe('Contact for Price')
+            ->and($powderApiItem['wholesale_pricing']['mode'])->toBe('BULK_CONTACT');
+    }
+});
+
+test('centralized flexible pricing supports FIXED_PRICE, STARTING_FROM, and BULK_CONTACT dynamically on PDPs', function () {
+    $seeder = app(PurNatureKCatalogSeeder::class);
+    $seeder->run();
+
+    $powder = Product::where('sku', 'PUR-KRATOM-POWDER')->firstOrFail();
+    $member = makePortalCustomer();
+
+    $originalConfig = config('wholesale_pricing.products.PUR-KRATOM-POWDER');
+
+    try {
+        // 1. Verify FIXED_PRICE via centralized config (no EAV DB override required)
+        config([
+            'wholesale_pricing.products.PUR-KRATOM-POWDER' => [
+                'mode'                => WholesalePricingManager::MODE_FIXED_PRICE,
+                'fixed_price'         => 85.00,
+                'starting_from_price' => null,
+                'unit'                => 'kg',
+                'moq'                 => 10,
+                'supply_availability' => 'Available',
+                'price_note'          => 'Fixed commercial rate test note.',
+            ],
+        ]);
+
+        $formattedFixed = WholesalePricingManager::formatForMember($powder);
+
+        expect($formattedFixed['mode'])->toBe(WholesalePricingManager::MODE_FIXED_PRICE)
+            ->and($formattedFixed['is_fixed'])->toBeTrue()
+            ->and($formattedFixed['price_display'])->toContain('$85.00')
+            ->and($formattedFixed['price_display'])->toContain('/ kg')
+            ->and($formattedFixed['moq_display'])->toBe('10 kg')
+            ->and(WholesalePricingManager::requiresApprovedQuotation($powder))->toBeTrue();
+
+        $pdpFixed = $this->actingAs($member, 'customer')
+            ->get('/catalog/kratom-powder')
+            ->assertOk();
+
+        $pdpFixed->assertSee('data-pricing-mode="FIXED_PRICE"', false)
+            ->assertSee('$85.00', false)
+            ->assertSee('10 kg', false)
+            ->assertSee('Fixed commercial rate test note.', false);
+
+        // 2. Verify STARTING_FROM via centralized config
+        config([
+            'wholesale_pricing.products.PUR-KRATOM-POWDER' => [
+                'mode'                => WholesalePricingManager::MODE_STARTING_FROM,
+                'fixed_price'         => null,
+                'starting_from_price' => 62.50,
+                'unit'                => 'kg',
+                'moq'                 => 25,
+                'supply_availability' => 'Available',
+                'price_note'          => 'Volume-tiered starting rate.',
+            ],
+        ]);
+
+        $formattedStart = WholesalePricingManager::formatForMember($powder);
+        expect($formattedStart['mode'])->toBe(WholesalePricingManager::MODE_STARTING_FROM)
+            ->and($formattedStart['is_starting_from'])->toBeTrue()
+            ->and($formattedStart['price_display'])->toContain('Starting from')
+            ->and($formattedStart['price_display'])->toContain('$62.50');
+
+        $pdpStart = $this->actingAs($member, 'customer')
+            ->get('/catalog/kratom-powder')
+            ->assertOk();
+
+        $pdpStart->assertSee('data-pricing-mode="STARTING_FROM"', false)
+            ->assertSee('Starting from', false)
+            ->assertSee('$62.50', false)
+            ->assertSee('25 kg', false);
+
+        // 3. Verify explicit Bagisto Admin product EAV override takes precedence over centralized config
+        app(\Webkul\Product\Repositories\ProductRepository::class)->update([
+            'sku'                 => $powder->sku,
+            'channel'             => 'default',
+            'locale'              => 'en',
+            'price_display_mode'  => WholesalePricingManager::MODE_BULK_CONTACT,
+            'wholesale_min_price' => '199.00',
+        ], $powder->id, ['price_display_mode', 'wholesale_min_price']);
+
+        $pdpOverride = $this->actingAs($member, 'customer')
+            ->get('/catalog/kratom-powder')
+            ->assertOk();
+
+        $pdpOverride->assertSee('data-pricing-mode="BULK_CONTACT"', false)
+            ->assertSee('Contact for Price', false)
+            ->assertDontSee('$199.00', false);
+    } finally {
+        config(['wholesale_pricing.products.PUR-KRATOM-POWDER' => $originalConfig]);
+    }
 });
 

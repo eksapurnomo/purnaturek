@@ -44,6 +44,11 @@ class WholesaleProductForm extends BaseProductForm
 
         $mode = $this->input('price_display_mode');
         $isRange = $mode === WholesalePricingManager::MODE_RANGE;
+        $requiresBaseWholesalePrice = in_array($mode, [
+            WholesalePricingManager::MODE_RANGE,
+            WholesalePricingManager::MODE_FIXED_PRICE,
+            WholesalePricingManager::MODE_STARTING_FROM,
+        ], true);
 
         $rules['price_display_mode'] = [
             'sometimes',
@@ -53,7 +58,7 @@ class WholesaleProductForm extends BaseProductForm
         ];
 
         $rules['wholesale_min_price'] = [
-            $isRange ? 'required' : 'nullable',
+            $requiresBaseWholesalePrice ? 'required' : 'nullable',
             'numeric',
             'min:0',
             new Decimal,
@@ -100,15 +105,15 @@ class WholesaleProductForm extends BaseProductForm
     public function messages(): array
     {
         return array_merge(parent::messages(), [
-            'wholesale_min_price.required' => 'The Minimum Wholesale Price is required when Price Display Mode is set to Price Range.',
-            'wholesale_min_price.min'      => 'The Minimum Wholesale Price must not be negative.',
+            'wholesale_min_price.required' => 'A Wholesale Price (Minimum / Fixed / Starting-From) is required when using FIXED_PRICE, STARTING_FROM, or Range mode.',
+            'wholesale_min_price.min'      => 'The Wholesale Price must not be negative.',
             'wholesale_max_price.required' => 'The Maximum Wholesale Price is required when Price Display Mode is set to Price Range.',
             'wholesale_max_price.min'      => 'The Maximum Wholesale Price must not be negative.',
             'wholesale_max_price.gte'      => 'The Maximum Wholesale Price must be greater than or equal to the Minimum Wholesale Price.',
             'wholesale_moq.gt'             => 'The Minimum Order Quantity (MOQ) must be greater than zero.',
             'wholesale_unit.in'            => 'Please select a valid Unit of Measurement.',
             'supply_availability.in'       => 'Please select a valid Supply Availability status.',
-            'price_display_mode.in'        => 'The selected price display mode is invalid. Valid options are: range, contact, or blank (Model A).',
+            'price_display_mode.in'        => 'The selected price display mode is invalid. Valid options are: BULK_CONTACT, FIXED_PRICE, STARTING_FROM, range, contact, or blank (Model A).',
         ]);
     }
 

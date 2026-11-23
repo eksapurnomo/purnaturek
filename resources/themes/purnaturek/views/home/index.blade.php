@@ -51,7 +51,7 @@
                     subtitle="Jump directly to protected wholesale catalog listings, compliance documentation, contracts, and commercial communication."
                 >
                     <div class="pk-grid-3">
-                        <a href="{{ route('shop.customers.account.index') }}#catalog" class="pk-shortcut-card">
+                        <a href="{{ route('shop.catalog.index') }}" class="pk-shortcut-card">
                             <div class="pk-shortcut-card__top">
                                 <span class="pk-shortcut-card__title">Wholesale Catalog</span>
                                 <span class="pk-eyebrow">Browse</span>

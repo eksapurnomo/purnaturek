@@ -157,9 +157,13 @@
         <x-shop::portal.page-header
             eyebrow="Commercial Catalog"
             title="Wholesale Product Catalog"
-            subtitle="Browse verified botanical powders, standardized extracts, MOQ schedules, and commercial supply documentation."
+            subtitle="Browse approved botanical products, inspect wholesale pricing schedules, and open individual product pages for technical documentation and inquiries."
         >
             <x-slot:actions>
+                <x-shop::portal.button :href="route('shop.catalog.index')" variant="secondary" size="sm">
+                    Open Catalog View &rarr;
+                </x-shop::portal.button>
+
                 @if ($memberGroupName)
                     <x-shop::portal.badge variant="info">Group: {{ $memberGroupName }}</x-shop::portal.badge>
                 @endif
@@ -172,7 +176,7 @@
             <x-slot:footer>
                 <form
                     method="GET"
-                    action="{{ route('shop.customers.account.index') }}#catalog"
+                    action="{{ route('shop.catalog.index') }}"
                     class="pk-filter-bar"
                     role="search"
                 >
@@ -181,7 +185,7 @@
                             type="search"
                             name="query"
                             value="{{ $catalogSearch }}"
-                            placeholder="Search by botanical name, extract grade, or SKU..."
+                            placeholder="Search by product name or SKU..."
                             aria-label="Search wholesale catalog"
                             class="pk-input"
                             maxlength="100"
@@ -214,7 +218,7 @@
 
                     @if ($catalogFiltered)
                         <a
-                            href="{{ route('shop.customers.account.index') }}#catalog"
+                            href="{{ route('shop.catalog.index') }}"
                             class="pk-btn pk-btn--secondary"
                             style="min-height: 44px;"
                         >
@@ -235,81 +239,7 @@
         @if (count($catalogCards))
             <div class="pk-grid">
                 @foreach ($catalogCards as $card)
-                    @php
-                        $pricing = $card['pricing'] ?? null;
-                    @endphp
-
-                    <article class="pk-card">
-                        <a
-                            href="{{ $card['url'] }}"
-                            class="pk-card__media"
-                            tabindex="-1"
-                            aria-hidden="true"
-                        >
-                            @if (! empty($card['image']))
-                                <img
-                                    src="{{ $card['image'] }}"
-                                    alt="{{ $card['alt'] ?? $card['name'] }}"
-                                    loading="lazy"
-                                />
-                            @else
-                                <div class="pk-card__placeholder">
-                                    <span class="pk-eyebrow">PUR NATUREK</span>
-                                    <span class="text-xs font-semibold pk-text-primary" style="margin-top: 6px;">Botanical Specification</span>
-                                    <span class="text-[11px] pk-text-muted" style="margin-top: 2px;">Photography Pending</span>
-                                </div>
-                            @endif
-                        </a>
-
-                        <div class="pk-card__body">
-                            <span class="pk-card__sku">SKU // {{ $card['sku'] }}</span>
-
-                            <h2 class="pk-card__name">
-                                <a href="{{ $card['url'] }}">
-                                    {{ $card['name'] }}
-                                </a>
-                            </h2>
-
-                            @if ($pricing)
-                                <div class="pk-card__pricing-box">
-                                    <span class="pk-card__price-label">Indicative Wholesale Range</span>
-
-                                    @if (! empty($pricing['is_range']))
-                                        <span class="pk-card__price-val">{{ $pricing['price_display'] }}</span>
-                                    @else
-                                        <span class="pk-card__price-val pk-card__price-val--contact">{{ $pricing['price_display'] }}</span>
-                                    @endif
-                                </div>
-
-                                <div class="pk-card__pill-row">
-                                    @if (! empty($pricing['moq_display']))
-                                        <x-shop::portal.badge variant="earth" size="sm">
-                                            MOQ: {{ $pricing['moq_display'] }}
-                                        </x-shop::portal.badge>
-                                    @endif
-
-                                    @if (! empty($pricing['supply_availability']))
-                                        <x-shop::portal.badge variant="verified" size="sm">
-                                            {{ $pricing['supply_availability'] }}
-                                        </x-shop::portal.badge>
-                                    @endif
-                                </div>
-                            @endif
-
-                            @if (! empty($card['summary']))
-                                <p class="pk-card__summary">{{ $card['summary'] }}</p>
-                            @endif
-
-                            <div class="pk-card__cta">
-                                <a
-                                    href="{{ $card['url'] }}"
-                                    class="pk-btn pk-btn--secondary pk-btn--block"
-                                >
-                                    View Specifications &rarr;
-                                </a>
-                            </div>
-                        </div>
-                    </article>
+                    <x-shop::portal.product-card :card="$card" />
                 @endforeach
             </div>
 
@@ -321,11 +251,11 @@
         @else
             <x-shop::portal.empty-state
                 title="No wholesale products found"
-                description="No catalog entries match your active search or category criteria. Clear filters or message our commercial desk regarding custom sourcing requests."
+                description="No catalog entries match your active search or category criteria. Clear filters or message our commercial desk regarding product inquiries."
             >
                 <x-slot:actions>
                     @if ($catalogFiltered)
-                        <x-shop::portal.button :href="route('shop.customers.account.index') . '#catalog'" variant="primary" size="sm">
+                        <x-shop::portal.button :href="route('shop.catalog.index')" variant="primary" size="sm">
                             Clear Filters
                         </x-shop::portal.button>
                     @endif

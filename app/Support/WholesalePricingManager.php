@@ -17,6 +17,12 @@ use Webkul\Product\Models\Product;
 
 class WholesalePricingManager
 {
+    public const MODE_FIXED_PRICE = 'FIXED_PRICE';
+
+    public const MODE_STARTING_FROM = 'STARTING_FROM';
+
+    public const MODE_BULK_CONTACT = 'BULK_CONTACT';
+
     public const MODE_RANGE = 'range';
 
     public const MODE_CONTACT = 'contact';
@@ -25,11 +31,14 @@ class WholesalePricingManager
 
     public const ATTRIBUTE_GROUP_NAME = 'Wholesale Pricing & Supply';
 
-    public const DISCLAIMER = 'Displayed prices are indicative wholesale prices only. Final pricing depends on order quantity, product specifications, availability, shipping requirements, and mutual agreement.';
+    public const DISCLAIMER = 'Displayed pricing information is for qualified B2B wholesale reference only. Final commercial pricing depends on order quantity, product specifications, buyer verification status, shipping requirements, and mutual agreement.';
 
     public const DISPLAY_MODES = [
-        self::MODE_RANGE   => 'Price Range',
-        self::MODE_CONTACT => 'Contact for Price',
+        self::MODE_BULK_CONTACT  => 'Bulk Contact / Custom Quote (BULK_CONTACT)',
+        self::MODE_FIXED_PRICE   => 'Fixed Wholesale Price (FIXED_PRICE)',
+        self::MODE_STARTING_FROM => 'Starting From Price (STARTING_FROM)',
+        self::MODE_RANGE         => 'Price Range (Legacy Range)',
+        self::MODE_CONTACT       => 'Contact for Price (Legacy Contact)',
     ];
 
     public const UNITS = [
@@ -130,7 +139,7 @@ class WholesalePricingManager
                         'admin_name'    => 'Price Display Mode',
                         'type'          => 'text',
                         'validation'    => null,
-                        'default_value' => self::MODE_RANGE,
+                        'default_value' => self::MODE_BULK_CONTACT,
                         'position'      => 101,
                     ],
                     [
@@ -255,25 +264,29 @@ class WholesalePricingManager
      *
      * Privacy guarantee:
      * - Never exposes Bagisto's base retail `price` or `cost`.
-     * - When `price_display_mode` is `contact` (or when wholesale range prices are not configured),
-     *   `min_price` and `max_price` are strictly null and never emitted.
+     * - Reads product-level Bagisto EAV overrides first, then falls back to centralized `config/wholesale_pricing.php`.
+     * - When `BULK_CONTACT` (or legacy `contact`) is active, or when required numeric price fields
+     *   for `FIXED_PRICE` / `STARTING_FROM` / `range` are unconfigured, numeric price fields remain strictly null.
      */
     public static function formatForMember($product): array
     {
-        $rawMode = self::resolveStringValue($product, 'price_display_mode');
-        $mode = in_array($rawMode, [self::MODE_RANGE, self::MODE_CONTACT], true)
-            ? $rawMode
-            : self::MODE_RANGE;
+        $configEntry = self::resolveConfigEntry($product);
+        $rawMode = self::resolveEffectiveMode($product, $configEntry)
+            ?? config('wholesale_pricing.default_mode', self::MODE_BULK_CONTACT);
 
-        $unit = self::resolveStringValue($product, 'wholesale_unit');
+        $mode = $rawMode === self::MODE_CONTACT ? self::MODE_BULK_CONTACT : $rawMode;
+
+        $unit = self::resolveStringValue($product, 'wholesale_unit')
+            ?? ($configEntry['unit'] ?? null);
         $unit = ($unit !== null && isset(self::UNITS[$unit])) ? self::UNITS[$unit] : ($unit ?: null);
 
-        $availability = self::resolveStringValue($product, 'supply_availability');
+        $availability = self::resolveStringValue($product, 'supply_availability')
+            ?? ($configEntry['supply_availability'] ?? null);
         $availability = ($availability !== null && isset(self::AVAILABILITY_OPTIONS[$availability]))
             ? self::AVAILABILITY_OPTIONS[$availability]
             : ($availability ?: null);
 
-        $moqRaw = $product->wholesale_moq;
+        $moqRaw = $product->wholesale_moq ?? ($configEntry['moq'] ?? null);
         $moqFormatted = null;
         $moqDisplay = null;
 
@@ -282,24 +295,68 @@ class WholesalePricingManager
             $moqDisplay = $unit ? "{$moqFormatted} {$unit}" : $moqFormatted;
         }
 
-        $minRaw = $product->wholesale_min_price;
-        $maxRaw = $product->wholesale_max_price;
+        $disclaimer = config('wholesale_pricing.disclaimer', self::DISCLAIMER);
+        $minRaw = $product->wholesale_min_price ?? null;
+        $maxRaw = $product->wholesale_max_price ?? null;
 
-        $hasValidRange = $mode === self::MODE_RANGE
-            && $minRaw !== null && $minRaw !== '' && is_numeric($minRaw) && (float) $minRaw >= 0
-            && $maxRaw !== null && $maxRaw !== '' && is_numeric($maxRaw) && (float) $maxRaw >= (float) $minRaw;
+        if ($mode === self::MODE_FIXED_PRICE) {
+            $fixedRaw = self::isValidNonNegativeNumeric($minRaw)
+                ? $minRaw
+                : ($configEntry['fixed_price'] ?? null);
 
-        if ($hasValidRange) {
+            if (self::isValidNonNegativeNumeric($fixedRaw)) {
+                $fixedFormatted = core()->formatPrice((float) $fixedRaw);
+                $priceDisplay = $unit ? "{$fixedFormatted} / {$unit}" : $fixedFormatted;
+
+                return self::buildPricingPayload(self::MODE_FIXED_PRICE, [
+                    'is_fixed'              => true,
+                    'fixed_price_formatted' => $fixedFormatted,
+                    'min_price_formatted'   => $fixedFormatted,
+                    'price_display'         => $priceDisplay,
+                    'unit'                  => $unit,
+                    'moq'                   => $moqFormatted,
+                    'moq_display'           => $moqDisplay,
+                    'supply_availability'   => $availability,
+                    'disclaimer'            => $disclaimer,
+                ], $configEntry);
+            }
+        }
+
+        if ($mode === self::MODE_STARTING_FROM) {
+            $startRaw = self::isValidNonNegativeNumeric($minRaw)
+                ? $minRaw
+                : ($configEntry['starting_from_price'] ?? null);
+
+            if (self::isValidNonNegativeNumeric($startRaw)) {
+                $startFormatted = core()->formatPrice((float) $startRaw);
+                $priceDisplay = $unit ? "Starting from {$startFormatted} / {$unit}" : "Starting from {$startFormatted}";
+
+                return self::buildPricingPayload(self::MODE_STARTING_FROM, [
+                    'is_starting_from'    => true,
+                    'min_price_formatted' => $startFormatted,
+                    'price_display'       => $priceDisplay,
+                    'unit'                => $unit,
+                    'moq'                 => $moqFormatted,
+                    'moq_display'         => $moqDisplay,
+                    'supply_availability' => $availability,
+                    'disclaimer'          => $disclaimer,
+                ], $configEntry);
+            }
+        }
+
+        if (
+            $mode === self::MODE_RANGE
+            && self::isValidNonNegativeNumeric($minRaw)
+            && self::isValidNonNegativeNumeric($maxRaw)
+            && (float) $maxRaw >= (float) $minRaw
+        ) {
             $minFormatted = core()->formatPrice((float) $minRaw);
             $maxFormatted = core()->formatPrice((float) $maxRaw);
-
             $rangeText = "{$minFormatted} – {$maxFormatted}";
             $priceDisplay = $unit ? "{$rangeText} / {$unit}" : $rangeText;
 
-            return [
-                'mode'                => self::MODE_RANGE,
+            return self::buildPricingPayload(self::MODE_RANGE, [
                 'is_range'            => true,
-                'is_contact'          => false,
                 'min_price_formatted' => $minFormatted,
                 'max_price_formatted' => $maxFormatted,
                 'price_display'       => $priceDisplay,
@@ -307,30 +364,27 @@ class WholesalePricingManager
                 'moq'                 => $moqFormatted,
                 'moq_display'         => $moqDisplay,
                 'supply_availability' => $availability,
-                'disclaimer'          => self::DISCLAIMER,
-            ];
+                'disclaimer'          => $disclaimer,
+            ], $configEntry);
         }
 
-        return [
-            'mode'                => self::MODE_CONTACT,
-            'is_range'            => false,
+        return self::buildPricingPayload(self::MODE_BULK_CONTACT, [
             'is_contact'          => true,
-            'min_price_formatted' => null,
-            'max_price_formatted' => null,
             'price_display'       => 'Contact for Price',
             'unit'                => $unit,
             'moq'                 => $moqFormatted,
             'moq_display'         => $moqDisplay,
             'supply_availability' => $availability,
-            'disclaimer'          => self::DISCLAIMER,
-        ];
+            'disclaimer'          => $disclaimer,
+        ], $configEntry);
     }
 
     /**
      * Pricing model detection.
      *
-     * Model A (native Bagisto pricing): `price_display_mode` is empty / null / "native" / anything else.
-     * Model B (wholesale indicative pricing): `price_display_mode` is `range` or `contact`.
+     * Model A (native Bagisto pricing): no wholesale pricing mode configured on the product or centralized config.
+     * Model B (wholesale pricing): `price_display_mode` or centralized config defines `FIXED_PRICE`,
+     * `STARTING_FROM`, `BULK_CONTACT`, `range`, or `contact`.
      *
      * Variants inherit Model B from their parent product.
      */
@@ -340,9 +394,9 @@ class WholesalePricingManager
             return false;
         }
 
-        $mode = self::resolveStringValue($product, 'price_display_mode');
+        $configEntry = self::resolveConfigEntry($product);
 
-        if (in_array($mode, [self::MODE_RANGE, self::MODE_CONTACT], true)) {
+        if (self::resolveEffectiveMode($product, $configEntry) !== null) {
             return true;
         }
 
@@ -351,6 +405,94 @@ class WholesalePricingManager
         }
 
         return false;
+    }
+
+    /**
+     * Build a normalized pricing view-model from centralized mode metadata and product config.
+     */
+    protected static function buildPricingPayload(string $mode, array $overrides, array $configEntry): array
+    {
+        $modesMeta = config('wholesale_pricing.modes', []);
+        $metaKey = $mode === self::MODE_RANGE ? self::MODE_STARTING_FROM : $mode;
+        $meta = $modesMeta[$metaKey] ?? [];
+
+        return array_merge([
+            'mode'                  => $mode,
+            'mode_label'            => $meta['label'] ?? ($mode === self::MODE_RANGE ? 'Price Range' : 'Bulk Contact / Custom Quote'),
+            'headline_label'        => $meta['headline'] ?? 'Wholesale Pricing',
+            'badge_label'           => $meta['badge'] ?? 'Wholesale Pricing',
+            'is_fixed'              => false,
+            'is_starting_from'      => false,
+            'is_range'              => false,
+            'is_contact'            => false,
+            'fixed_price_formatted' => null,
+            'min_price_formatted'   => null,
+            'max_price_formatted'   => null,
+            'price_display'         => 'Contact for Price',
+            'price_note'            => $configEntry['price_note'] ?? ($meta['default_note'] ?? null),
+            'unit'                  => null,
+            'moq'                   => null,
+            'moq_display'           => null,
+            'supply_availability'   => null,
+            'disclaimer'            => self::DISCLAIMER,
+        ], $overrides);
+    }
+
+    /**
+     * Resolve centralized `config/wholesale_pricing.php` entry for a product by SKU or URL key.
+     */
+    protected static function resolveConfigEntry($product): array
+    {
+        if (! $product) {
+            return [];
+        }
+
+        $productsConfig = config('wholesale_pricing.products', []);
+
+        if (! is_array($productsConfig) || empty($productsConfig)) {
+            return [];
+        }
+
+        $sku = $product->sku ?? null;
+
+        if ($sku && isset($productsConfig[$sku]) && is_array($productsConfig[$sku])) {
+            return $productsConfig[$sku];
+        }
+
+        $urlKey = $product->url_key ?? null;
+
+        if ($urlKey && isset($productsConfig[$urlKey]) && is_array($productsConfig[$urlKey])) {
+            return $productsConfig[$urlKey];
+        }
+
+        return [];
+    }
+
+    /**
+     * Resolve the effective wholesale display mode from the product EAV attribute or centralized config.
+     */
+    protected static function resolveEffectiveMode($product, array $configEntry): ?string
+    {
+        $validModes = array_keys(self::DISPLAY_MODES);
+
+        $rawAttrMode = self::resolveStringValue($product, 'price_display_mode');
+
+        if ($rawAttrMode !== null && in_array($rawAttrMode, $validModes, true)) {
+            return $rawAttrMode;
+        }
+
+        $configMode = $configEntry['mode'] ?? null;
+
+        if (is_string($configMode) && in_array($configMode, $validModes, true)) {
+            return $configMode;
+        }
+
+        return null;
+    }
+
+    protected static function isValidNonNegativeNumeric(mixed $value): bool
+    {
+        return $value !== null && $value !== '' && is_numeric($value) && (float) $value >= 0;
     }
 
     /**
@@ -562,7 +704,7 @@ class WholesalePricingManager
      */
     protected static function resolveStringValue($product, string $code): ?string
     {
-        $val = $product->{$code};
+        $val = $product->{$code} ?? null;
 
         if ($val === null || $val === '') {
             return null;

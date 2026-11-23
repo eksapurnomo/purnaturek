@@ -35,7 +35,7 @@
     </v-field>
 
     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
-        "Native Bagisto Pricing" uses the standard price and checkout. "Price Range" and "Contact for Price" show indicative wholesale information only; orders then require an approved quotation. The native price above is never changed by wholesale values.
+        Select <strong>BULK_CONTACT</strong>, <strong>FIXED_PRICE</strong>, or <strong>STARTING_FROM</strong> for wholesale catalog display. Enter the configured rate in Minimum Wholesale Price when using FIXED_PRICE or STARTING_FROM. Orders remain gated by approved quotation.
     </p>
 
 @elseif (in_array($attribute->code, ['wholesale_min_price', 'wholesale_max_price'], true))
@@ -61,9 +61,9 @@
 
     <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
         @if ($attribute->code === 'wholesale_min_price')
-            Optional when "Contact for Price" is selected. Must not be negative.
+            Used as the configured rate for FIXED_PRICE, STARTING_FROM, or Range mode (never shown in BULK_CONTACT mode).
         @else
-            Optional when "Contact for Price" is selected. Must be &ge; Minimum Wholesale Price.
+            Optional unless legacy Range mode is active. Must be &ge; Minimum Wholesale Price.
         @endif
     </p>
 @elseif ($attribute->code === 'wholesale_moq')

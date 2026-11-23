@@ -2,33 +2,36 @@
     PurNatureK Members Portal — Private Product Detail View (PDP)
     resources/themes/purnaturek/views/products/view.blade.php
 --}}
-@inject('productViewHelper', 'Webkul\Product\Helpers\View')
-
 @php
     \App\Support\WholesalePricingManager::ensureAttributesProvisioned();
 
-    $pricing = \App\Support\WholesalePricingManager::formatForMember($product);
+    $pricing ??= \App\Support\WholesalePricingManager::formatForMember($product);
     $baseImage = product_image()->getProductBaseImage($product);
     $galleryImages = product_image()->getGalleryImages($product);
 
-    $customer = auth()->guard('customer')->user();
-    $isVerifiedBuyer = \App\Support\BuyerVerificationManager::isVerifiedBuyer($customer);
-    $verificationStatus = $customer ? \App\Support\BuyerVerificationManager::getVerificationStatus($customer) : null;
+    $customer ??= auth()->guard('customer')->user();
+    $isVerifiedBuyer ??= \App\Support\BuyerVerificationManager::isVerifiedBuyer($customer);
+    $verificationStatus ??= $customer ? \App\Support\BuyerVerificationManager::getVerificationStatus($customer) : null;
     $canAccessB2BQuotes = $customer
         && function_exists('customer_bouncer')
         && customer_bouncer()->hasPermission('account.quotes');
 
-    $specs = \App\Support\ProductDocumentationManager::getProductSpecifications($product);
-    $groupedDocuments = \App\Support\ProductDocumentationManager::getGroupedProductDocuments($product->id);
+    $specs ??= \App\Support\ProductDocumentationManager::getProductSpecifications($product);
+    $groupedDocuments ??= \App\Support\ProductDocumentationManager::getGroupedProductDocuments((int) $product->id);
+    $relatedProducts ??= app(\App\View\Composers\MemberCatalogComposer::class)->relatedCardsForProduct($product, 4);
     $hasAnyDocuments = collect($groupedDocuments)->pluck('documents')->flatten(1)->isNotEmpty();
 
     $mainImageSrc = $baseImage['large_image_url'] ?? ($baseImage['medium_image_url'] ?? null);
     $recentThumb = $baseImage['small_image_url'] ?? ($baseImage['medium_image_url'] ?? null);
+
+    $hasConfiguredPricingSpecs = ! empty($pricing['moq_display'])
+        || ! empty($pricing['unit'])
+        || ! empty($pricing['supply_availability']);
 @endphp
 
 <x-shop::layouts.account>
     <x-slot:title>
-        {{ $product->name }} — PurNatureK Members Portal
+        {{ $product->name }} — Wholesale Catalog | PurNatureK Members Portal
     </x-slot>
 
     <div class="max-md:hidden">
@@ -36,25 +39,27 @@
     </div>
 
     <section class="pk-product pk-stack-md" v-pre>
-        <!-- Breadcrumb Navigation -->
+        <!-- Breadcrumb Navigation back to /catalog -->
         <nav class="pk-product__breadcrumb" aria-label="Breadcrumb">
-            <a href="{{ route('shop.customers.account.index') }}#catalog" class="pk-product__back">
-                &larr; Wholesale Product Catalog
+            <a href="{{ route('shop.catalog.index') }}" class="pk-product__back">
+                &larr; Wholesale Catalog
             </a>
             <span aria-hidden="true">/</span>
             <span class="pk-mono text-xs">{{ $product->sku }}</span>
+            <span aria-hidden="true">/</span>
+            <span aria-current="page" class="text-xs font-semibold pk-text-primary">{{ $product->name }}</span>
         </nav>
 
-        <!-- Editorial Product Hero -->
+        <!-- Editorial B2B Product Hero -->
         <div class="pk-product__hero">
-            <!-- Gallery Column -->
+            <!-- Media Presentation Column -->
             <div>
                 <div class="pk-product__image-main">
                     @if ($mainImageSrc)
                         <img
                             id="pk-pdp-main-img"
                             src="{{ $mainImageSrc }}"
-                            alt="{{ $product->name }}"
+                            alt="{{ $baseImage['alt'] ?? $product->name }}"
                         >
                     @else
                         <div class="pk-card__placeholder" style="min-height: 280px;">
@@ -63,7 +68,7 @@
                                 {{ $product->name }}
                             </span>
                             <span class="pk-mono text-xs pk-text-muted" style="margin-top: 6px;">SKU: {{ $product->sku }}</span>
-                            <span class="text-[11px] pk-text-muted" style="margin-top: 10px;">Specification Photography Pending</span>
+                            <span class="text-[11px] pk-text-muted" style="margin-top: 10px;">Product Photography Pending</span>
                         </div>
                     @endif
                 </div>
@@ -95,11 +100,17 @@
                 @endif
             </div>
 
-            <!-- Commercial Pricing & Action Summary -->
+            <!-- Commercial Overview, Flexible Pricing & Wholesale Inquiry Column -->
             <div class="pk-product__summary">
                 <div>
                     <div class="pk-product__badges">
                         <x-shop::portal.badge variant="neutral">SKU: {{ $product->sku }}</x-shop::portal.badge>
+
+                        @if (! empty($pricing['badge_label']))
+                            <x-shop::portal.badge variant="earth">
+                                {{ $pricing['badge_label'] }}
+                            </x-shop::portal.badge>
+                        @endif
 
                         @if (! empty($pricing['supply_availability']))
                             <x-shop::portal.badge variant="verified">
@@ -117,95 +128,124 @@
                     @endif
                 </div>
 
-                <!-- Model B Indicative Pricing Box -->
-                <div class="pk-pricing-box">
+                <!-- Centralized Wholesale Pricing Section (FIXED_PRICE / STARTING_FROM / BULK_CONTACT) -->
+                <div class="pk-pricing-box" data-pricing-mode="{{ $pricing['mode'] }}">
                     <div class="pk-pricing-box__header">
-                        <span class="pk-pricing-box__label">Indicative Wholesale Price</span>
+                        <div class="pk-pricing-box__headline-row">
+                            <span class="pk-pricing-box__label">{{ $pricing['headline_label'] }}</span>
+                            <span class="pk-pricing-box__mode-tag">{{ $pricing['mode_label'] }}</span>
+                        </div>
 
-                        <div class="pk-pricing-box__value">
+                        <div class="pk-pricing-box__value {{ ! empty($pricing['is_contact']) ? 'pk-pricing-box__value--contact' : '' }}">
                             {{ $pricing['price_display'] }}
                         </div>
+
+                        @if (! empty($pricing['price_note']))
+                            <p class="pk-pricing-box__note">
+                                {{ $pricing['price_note'] }}
+                            </p>
+                        @endif
                     </div>
 
-                    <dl class="pk-pricing-box__specs">
-                        <div class="pk-pricing-box__spec">
-                            <dt>Minimum Order (MOQ)</dt>
-                            <dd>{{ $pricing['moq_display'] ?? 'Contact for MOQ' }}</dd>
-                        </div>
+                    @if ($hasConfiguredPricingSpecs)
+                        <dl class="pk-pricing-box__specs pk-pricing-box__specs--auto">
+                            @if (! empty($pricing['moq_display']))
+                                <div class="pk-pricing-box__spec">
+                                    <dt>Minimum Order (MOQ)</dt>
+                                    <dd>{{ $pricing['moq_display'] }}</dd>
+                                </div>
+                            @endif
 
-                        <div class="pk-pricing-box__spec">
-                            <dt>Packaging Unit</dt>
-                            <dd>{{ $pricing['unit'] ?? 'Per specification' }}</dd>
-                        </div>
+                            @if (! empty($pricing['unit']))
+                                <div class="pk-pricing-box__spec">
+                                    <dt>Unit</dt>
+                                    <dd>{{ $pricing['unit'] }}</dd>
+                                </div>
+                            @endif
 
-                        <div class="pk-pricing-box__spec">
-                            <dt>Commercial Supply</dt>
-                            <dd>{{ $pricing['supply_availability'] ?? 'Contact for Availability' }}</dd>
-                        </div>
-                    </dl>
+                            @if (! empty($pricing['supply_availability']))
+                                <div class="pk-pricing-box__spec">
+                                    <dt>Supply Availability</dt>
+                                    <dd>{{ $pricing['supply_availability'] }}</dd>
+                                </div>
+                            @endif
+                        </dl>
+                    @endif
 
-                    <p class="pk-pricing-box__disclaimer">
-                        {{ $pricing['disclaimer'] }}
-                    </p>
+                    @if (! empty($pricing['disclaimer']))
+                        <p class="pk-pricing-box__disclaimer">
+                            {{ $pricing['disclaimer'] }}
+                        </p>
+                    @endif
                 </div>
 
-                <!-- Inquiry & Purchasing Actions Panel -->
+                <!-- Wholesale Inquiry Actions (Handled via Message Admin) -->
                 <div class="pk-product__actions-panel">
-                    <h2 class="pk-product__actions-title">Wholesale Inquiry &amp; Purchasing</h2>
+                    <div class="pk-product__actions-head">
+                        <h2 class="pk-product__actions-title">Wholesale Inquiry &amp; Samples</h2>
+
+                        @if ($isVerifiedBuyer)
+                            <x-shop::portal.badge variant="verified" size="sm">&check; Verified Wholesale Buyer</x-shop::portal.badge>
+                        @elseif ($verificationStatus === 'pending')
+                            <x-shop::portal.badge variant="pending" size="sm">Verification Pending Review</x-shop::portal.badge>
+                        @else
+                            <x-shop::portal.badge variant="neutral" size="sm">Tier 1 Registered Member</x-shop::portal.badge>
+                        @endif
+                    </div>
 
                     <div class="pk-product__actions">
-                        @if ($isVerifiedBuyer && $canAccessB2BQuotes)
-                            <x-shop::portal.button :href="route('shop.customers.account.quotes.index')" variant="primary">
-                                Buy Wholesale &rarr;
-                            </x-shop::portal.button>
-                        @elseif ($verificationStatus === 'pending')
-                            <x-shop::portal.button
-                                :href="route('shop.customers.account.buyer_verification.index')"
-                                variant="earth"
-                                title="Your buyer verification application is currently under commercial review"
-                            >
-                                Verification Pending Review
-                            </x-shop::portal.button>
-                        @else
-                            <x-shop::portal.button
-                                :href="route('shop.customers.account.buyer_verification.index')"
-                                variant="primary"
-                                title="Submit business credentials to unlock wholesale purchasing"
-                            >
-                                Verify Account to Buy Wholesale
-                            </x-shop::portal.button>
-                        @endif
-
-                        <span
-                            class="pk-btn pk-btn--secondary"
-                            aria-disabled="true"
-                            title="Long-term supply agreements require formal agreement execution"
+                        <x-shop::portal.button
+                            :href="route('shop.customers.account.conversations.create', ['category' => \App\Models\MemberConversation::CATEGORY_PRICING_INQUIRY, 'subject' => 'Wholesale Pricing Inquiry: ' . $product->name . ' (SKU: ' . $product->sku . ')'])"
+                            variant="primary"
+                            title="Submit a wholesale pricing and volume inquiry to PurNatureK administration"
                         >
-                            Buy with Long-Term Contract
-                        </span>
+                            Inquire via Message Admin &rarr;
+                        </x-shop::portal.button>
 
                         <x-shop::portal.button
-                            :href="route('shop.customers.account.conversations.create', ['category' => 'product_inquiry', 'subject' => 'Inquiry: ' . $product->name . ' (SKU: ' . $product->sku . ')'])"
+                            :href="route('shop.customers.account.conversations.create', ['category' => \App\Models\MemberConversation::CATEGORY_PRODUCT_INQUIRY, 'subject' => 'Sample Request: ' . $product->name . ' (SKU: ' . $product->sku . ')'])"
                             variant="secondary"
-                            title="Directly message PurNatureK administrators regarding this product"
+                            title="Request evaluation samples or product specifications through Message Admin"
                         >
-                            Message Admin
+                            Request Sample via Message Admin
                         </x-shop::portal.button>
+
+                        @if ($isVerifiedBuyer && $canAccessB2BQuotes)
+                            <x-shop::portal.button
+                                :href="route('shop.customers.account.quotes.index')"
+                                variant="earth"
+                                title="View approved wholesale quotations for your verified buyer account"
+                            >
+                                View Approved Quotations
+                            </x-shop::portal.button>
+                        @elseif ($verificationStatus !== 'pending')
+                            <x-shop::portal.button
+                                :href="route('shop.customers.account.buyer_verification.index')"
+                                variant="secondary"
+                                size="sm"
+                                title="Submit business credentials to qualify as a Verified Wholesale Buyer"
+                            >
+                                Complete Buyer Verification &rarr;
+                            </x-shop::portal.button>
+                        @endif
                     </div>
 
                     <p class="pk-product__verification-note">
-                        Official wholesale transactions and Master Supply Agreements are restricted to
-                        <strong class="pk-text-primary">Verified Wholesale Buyers</strong> and remain subject to formal quotation, specification review, and mutual agreement.
+                        @if ($isVerifiedBuyer)
+                            Your account holds <strong class="pk-text-primary">Verified Wholesale Buyer (Tier 2)</strong> status. Product inquiries, sample requests, and commercial volume coordination are handled directly via Message Admin.
+                        @else
+                            All wholesale pricing quotes, sample evaluations, and product questions are handled directly through <strong class="pk-text-primary">Message Admin</strong>. Formal wholesale purchasing workflows remain restricted to approved <strong class="pk-text-primary">Verified Wholesale Buyers</strong>.
+                        @endif
                     </p>
                 </div>
             </div>
         </div>
 
-        <!-- Product Description & Overview -->
+        <!-- Product Overview & Description -->
         @if (filled($product->description))
             <x-shop::portal.card
-                eyebrow="Botanical Profile"
-                title="Product Description & Overview"
+                eyebrow="Commercial Profile"
+                title="Product Overview & Description"
             >
                 <div class="pk-product__prose">
                     {!! $product->description !!}
@@ -213,28 +253,42 @@
             </x-shop::portal.card>
         @endif
 
-        <!-- Technical Specifications -->
-        @if ($specs->isNotEmpty())
-            <x-shop::portal.card
-                eyebrow="Technical Parameters"
-                title="Product Specifications"
-            >
-                <dl class="pk-spec-list">
-                    @foreach ($specs as $spec)
-                        <div class="pk-spec-list__row">
-                            <dt>{{ $spec['label'] }}</dt>
-                            <dd>{{ $spec['value'] }}</dd>
-                        </div>
-                    @endforeach
-                </dl>
-            </x-shop::portal.card>
-        @endif
+        <!-- Verified Product Information & Specifications -->
+        <x-shop::portal.card
+            eyebrow="Verified Catalog Data"
+            title="Product Information & Specifications"
+            subtitle="Displays verified product catalog data only. Lot-specific analytical parameters and technical data are furnished inside private documentation or upon inquiry."
+        >
+            <dl class="pk-spec-list">
+                <div class="pk-spec-list__row">
+                    <dt>Product Name</dt>
+                    <dd>{{ $product->name }}</dd>
+                </div>
+
+                @foreach ($specs as $spec)
+                    <div class="pk-spec-list__row">
+                        <dt>{{ $spec['label'] }}</dt>
+                        <dd>{{ $spec['value'] }}</dd>
+                    </div>
+                @endforeach
+
+                <div class="pk-spec-list__row">
+                    <dt>Pricing Mode</dt>
+                    <dd>{{ $pricing['mode_label'] }}</dd>
+                </div>
+
+                <div class="pk-spec-list__row">
+                    <dt>Commercial Channel</dt>
+                    <dd>Wholesale B2B Members Portal</dd>
+                </div>
+            </dl>
+        </x-shop::portal.card>
 
         <!-- Grouped Documentation (COA / TDS / Compliance) -->
         <x-shop::portal.card
             eyebrow="Quality Custody"
-            title="Product Documentation & Quality Certificates"
-            subtitle="Verified technical specifications, batch Certificates of Analysis (COA), Technical Data Sheets (TDS), and quality documentation."
+            title="Product Documentation"
+            subtitle="Private member access to published technical specifications, Certificates of Analysis (COA), and compliance files."
         >
             @if ($hasAnyDocuments)
                 <div class="pk-stack-md">
@@ -303,11 +357,11 @@
             @else
                 <x-shop::portal.empty-state
                     title="Documentation Pending Publication"
-                    description="No technical documents or batch Certificates of Analysis (COA) are currently published for this SKU. Contact our commercial desk for lot-specific files."
+                    description="No technical documents or Certificates of Analysis (COA) are currently published for this product. Request lot-specific records directly from our commercial team via Message Admin."
                 >
                     <x-slot:actions>
                         <x-shop::portal.button
-                            :href="route('shop.customers.account.conversations.create', ['category' => 'product_inquiry', 'subject' => 'Document Request: ' . $product->name . ' (SKU: ' . $product->sku . ')'])"
+                            :href="route('shop.customers.account.conversations.create', ['category' => \App\Models\MemberConversation::CATEGORY_PRODUCT_DOCUMENTATION, 'subject' => 'Documentation Request: ' . $product->name . ' (SKU: ' . $product->sku . ')'])"
                             variant="primary"
                             size="sm"
                         >
@@ -317,6 +371,27 @@
                 </x-shop::portal.empty-state>
             @endif
         </x-shop::portal.card>
+
+        <!-- Related Product Navigation -->
+        @if (! empty($relatedProducts))
+            <x-shop::portal.card
+                eyebrow="Wholesale Catalog"
+                title="Other Wholesale Products"
+                subtitle="Explore additional botanical offerings available in the PurNatureK private catalog."
+            >
+                <x-slot:actions>
+                    <x-shop::portal.button :href="route('shop.catalog.index')" variant="secondary" size="sm">
+                        &larr; All Catalog Products
+                    </x-shop::portal.button>
+                </x-slot>
+
+                <div class="pk-grid pk-grid--related">
+                    @foreach ($relatedProducts as $relatedCard)
+                        <x-shop::portal.product-card :card="$relatedCard" />
+                    @endforeach
+                </div>
+            </x-shop::portal.card>
+        @endif
     </section>
 
     @push('scripts')
@@ -348,7 +423,7 @@
                             'id'    => (int) $product->id,
                             'sku'   => (string) $product->sku,
                             'name'  => (string) $product->name,
-                            'url'   => route('shop.product_or_category.index', $product->url_key, false),
+                            'url'   => route('shop.catalog.show', $product->url_key, false),
                             'image' => $recentThumb ? parse_url($recentThumb, PHP_URL_PATH) : null,
                         ];
                     @endphp

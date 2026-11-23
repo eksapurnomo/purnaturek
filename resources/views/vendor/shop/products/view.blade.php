@@ -37,10 +37,10 @@
         <!-- Breadcrumb / Back Navigation -->
         <nav class="pk-product__breadcrumb mb-4" aria-label="Breadcrumb">
             <a
-                href="{{ route('shop.customers.account.index') }}#catalog"
+                href="{{ route('shop.catalog.index') }}"
                 class="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-800 hover:text-emerald-950 hover:underline transition"
             >
-                &larr; Back to Wholesale Product Catalog
+                &larr; Wholesale Catalog
             </a>
         </nav>
 
@@ -118,98 +118,68 @@
                 </div>
 
                 <!-- B2B Wholesale Pricing Box -->
-                <div class="pk-pricing-box rounded-xl bg-[#f0f7f4] border border-[#d9e6e1] p-5 shadow-sm">
+                <div class="pk-pricing-box rounded-xl bg-[#f0f7f4] border border-[#d9e6e1] p-5 shadow-sm" data-pricing-mode="{{ $pricing['mode'] }}">
                     <div class="pk-pricing-box__header border-b border-[#d9e6e1] pb-3 mb-3">
                         <span class="pk-pricing-box__label text-xs font-bold uppercase tracking-wider text-emerald-800">
-                            Indicative Wholesale Price
+                            {{ $pricing['headline_label'] ?? 'Wholesale Pricing' }} ({{ $pricing['mode_label'] ?? $pricing['mode'] }})
                         </span>
 
-                        @if ($pricing['is_range'])
-                            <div class="pk-pricing-box__value text-2xl font-extrabold text-[#0f4a3e] mt-1">
-                                {{ $pricing['price_display'] }}
-                            </div>
-                        @else
-                            <div class="pk-pricing-box__value text-xl font-bold text-emerald-800 mt-1">
-                                {{ $pricing['price_display'] }}
-                            </div>
-                        @endif
+                        <div class="pk-pricing-box__value text-xl font-bold text-emerald-800 mt-1">
+                            {{ $pricing['price_display'] }}
+                        </div>
                     </div>
 
-                    <dl class="pk-pricing-box__specs grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                        <div class="pk-pricing-box__spec bg-white/70 rounded-lg p-2.5 border border-[#d9e6e1]/60">
-                            <dt class="text-zinc-500 font-medium">Minimum Order (MOQ)</dt>
-                            <dd class="text-zinc-900 font-bold mt-0.5">{{ $pricing['moq_display'] ?? 'Contact for MOQ' }}</dd>
-                        </div>
+                    @if (! empty($pricing['moq_display']) || ! empty($pricing['unit']) || ! empty($pricing['supply_availability']))
+                        <dl class="pk-pricing-box__specs grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
+                            @if (! empty($pricing['moq_display']))
+                                <div class="pk-pricing-box__spec bg-white/70 rounded-lg p-2.5 border border-[#d9e6e1]/60">
+                                    <dt class="text-zinc-500 font-medium">Minimum Order (MOQ)</dt>
+                                    <dd class="text-zinc-900 font-bold mt-0.5">{{ $pricing['moq_display'] }}</dd>
+                                </div>
+                            @endif
 
-                        <div class="pk-pricing-box__spec bg-white/70 rounded-lg p-2.5 border border-[#d9e6e1]/60">
-                            <dt class="text-zinc-500 font-medium">Packaging Unit</dt>
-                            <dd class="text-zinc-900 font-bold mt-0.5">{{ $pricing['unit'] ?? 'Per specification' }}</dd>
-                        </div>
+                            @if (! empty($pricing['unit']))
+                                <div class="pk-pricing-box__spec bg-white/70 rounded-lg p-2.5 border border-[#d9e6e1]/60">
+                                    <dt class="text-zinc-500 font-medium">Unit</dt>
+                                    <dd class="text-zinc-900 font-bold mt-0.5">{{ $pricing['unit'] }}</dd>
+                                </div>
+                            @endif
 
-                        <div class="pk-pricing-box__spec bg-white/70 rounded-lg p-2.5 border border-[#d9e6e1]/60">
-                            <dt class="text-zinc-500 font-medium">Commercial Supply</dt>
-                            <dd class="text-zinc-900 font-bold mt-0.5">{{ $pricing['supply_availability'] ?? 'Contact for Availability' }}</dd>
-                        </div>
-                    </dl>
+                            @if (! empty($pricing['supply_availability']))
+                                <div class="pk-pricing-box__spec bg-white/70 rounded-lg p-2.5 border border-[#d9e6e1]/60">
+                                    <dt class="text-zinc-500 font-medium">Commercial Supply</dt>
+                                    <dd class="text-zinc-900 font-bold mt-0.5">{{ $pricing['supply_availability'] }}</dd>
+                                </div>
+                            @endif
+                        </dl>
+                    @endif
 
                     <p class="pk-pricing-box__disclaimer text-[11px] text-[#5a6f68] mt-3 pt-3 border-t border-[#d9e6e1]/70 leading-relaxed italic">
                         {{ $pricing['disclaimer'] }}
                     </p>
                 </div>
 
-                <!-- Wholesale Purchasing & Inquiry Actions Panel -->
+                <!-- Wholesale Inquiry Panel -->
                 <div class="pk-product__actions-panel border-t border-[#d9e6e1] pt-5">
                     <h2 class="pk-product__actions-title text-xs font-bold uppercase tracking-wider text-zinc-500 mb-3">
-                        Wholesale Inquiry &amp; Purchasing
+                        Wholesale Inquiry &amp; Samples
                     </h2>
 
                     <div class="pk-product__actions flex flex-wrap items-center gap-3">
-                        @if ($isVerifiedBuyer && $canAccessB2BQuotes)
-                            <a
-                                href="{{ route('shop.customers.account.quotes.index') }}"
-                                class="pk-btn pk-btn--primary px-6 py-2.5 text-xs font-bold shadow-sm"
-                            >
-                                Buy Wholesale &rarr;
-                            </a>
-                        @elseif ($verificationStatus === 'pending')
-                            <a
-                                href="{{ route('shop.customers.account.buyer_verification.index') }}"
-                                class="pk-btn bg-amber-500 text-white hover:bg-amber-600 px-5 py-2.5 text-xs font-semibold"
-                                title="Your buyer verification application is currently under commercial review"
-                            >
-                                Verification Pending Review
-                            </a>
-                        @else
-                            <a
-                                href="{{ route('shop.customers.account.buyer_verification.index') }}"
-                                class="pk-btn pk-btn--primary px-5 py-2.5 text-xs font-bold shadow-sm"
-                                title="Submit business credentials to unlock wholesale purchasing"
-                            >
-                                Verify Account to Buy Wholesale
-                            </a>
-                        @endif
-
-                        <span
-                            class="pk-btn pk-btn--ghost text-zinc-400 border-zinc-200 cursor-not-allowed py-2.5 px-4 text-xs font-medium"
-                            aria-disabled="true"
-                            title="Long-term supply agreements require formal agreement execution"
+                        <a
+                            href="{{ route('shop.customers.account.conversations.create', ['category' => 'pricing_inquiry', 'subject' => 'Wholesale Pricing Inquiry: ' . $product->name . ' (SKU: ' . $product->sku . ')']) }}"
+                            class="pk-btn pk-btn--primary px-6 py-2.5 text-xs font-bold shadow-sm"
                         >
-                            Buy with Long-Term Contract
-                        </span>
+                            Inquire via Message Admin &rarr;
+                        </a>
 
                         <a
-                            href="{{ route('shop.customers.account.conversations.create', ['category' => 'product_inquiry', 'subject' => 'Inquiry: ' . $product->name . ' (SKU: ' . $product->sku . ')']) }}"
+                            href="{{ route('shop.customers.account.conversations.create', ['category' => 'product_inquiry', 'subject' => 'Sample Request: ' . $product->name . ' (SKU: ' . $product->sku . ')']) }}"
                             class="pk-btn pk-btn--ghost py-2.5 px-4 text-xs font-semibold"
-                            title="Directly message PurNatureK administrators regarding this product"
                         >
-                            Message Admin
+                            Request Sample via Message Admin
                         </a>
                     </div>
-
-                    <p class="pk-product__verification-note text-xs text-[#5a6f68] mt-3 leading-relaxed">
-                        Official wholesale transactions and Master Supply Agreements are restricted to
-                        <strong class="text-[#0f4a3e]">Verified Wholesale Buyers</strong> and remain subject to formal quotation, specification review, and mutual agreement.
-                    </p>
                 </div>
             </div>
         </div>

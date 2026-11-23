@@ -11,8 +11,10 @@
     }
 
     $onHome = request()->routeIs('shop.customers.account.index');
+    $onCatalog = request()->routeIs('shop.catalog.*');
     $isFiltering = request()->hasAny(['query', 'category_id', 'page']);
     $homeUrl = route('shop.customers.account.index');
+    $catalogUrl = route('shop.catalog.index');
 
     $currentCustomer = auth()->guard('customer')->user();
     $verificationStatus = $currentCustomer
@@ -45,7 +47,7 @@
     $groups = [
         'Main Portal' => [
             ['label' => 'Member Workspace', 'url' => $homeUrl, 'active' => $onHome && ! $isFiltering],
-            ['label' => 'Wholesale Catalog', 'url' => $homeUrl . '#catalog', 'active' => $onHome && $isFiltering],
+            ['label' => 'Wholesale Catalog', 'url' => $catalogUrl, 'active' => $onCatalog || ($onHome && $isFiltering)],
             [
                 'label'  => 'Company & Supply Info',
                 'url'    => route('shop.customers.account.company_supply.index'),
@@ -87,8 +89,8 @@
             ],
             [
                 'label'  => 'Product Documentation',
-                'url'    => $homeUrl . '#catalog',
-                'active' => false,
+                'url'    => $catalogUrl,
+                'active' => $onCatalog,
             ],
             [
                 'label'         => 'Message Admin',

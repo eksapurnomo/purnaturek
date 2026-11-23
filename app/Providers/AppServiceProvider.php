@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use App\Http\Controllers\WholesaleCatalogProxyController;
 use App\Http\Controllers\WholesaleQuickOrderController;
 use App\Http\Controllers\WholesaleRequisitionListController;
 use App\Http\Middleware\EnsureQuotationForCheckout;
@@ -24,6 +25,7 @@ use Webkul\Admin\Http\Requests\ProductForm;
 use Webkul\B2BSuite\Http\Controllers\Shop\QuickOrderController;
 use Webkul\B2BSuite\Http\Controllers\Shop\RequisitionListController;
 use Webkul\Core\Http\Middleware\NoCacheMiddleware;
+use Webkul\Shop\Http\Controllers\ProductsCategoriesProxyController;
 use Webkul\Shop\Http\Middleware\CacheResponse;
 
 class AppServiceProvider extends ServiceProvider
@@ -70,6 +72,11 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->bind(ProductForm::class, WholesaleProductForm::class);
+
+        /**
+         * Redirect legacy /{slug} product routes cleanly to /catalog/{slug} once authenticated.
+         */
+        $this->app->bind(ProductsCategoriesProxyController::class, WholesaleCatalogProxyController::class);
 
         /**
          * Quick Order search / fetch-by-SKU must not disclose native or indicative prices of Model B products.
@@ -126,9 +133,9 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(\Webkul\B2BSuite\Menu::class, \App\Support\Menu::class);
 
         /**
-         * PurNatureK Members Portal: feed the catalog grid to the customer portal landing view.
+         * PurNatureK Members Portal: feed the catalog grid to the customer portal landing and /catalog views.
          */
-        View::composer('shop::customers.account.index', MemberCatalogComposer::class);
+        View::composer(['shop::customers.account.index', 'shop::catalog.index'], MemberCatalogComposer::class);
 
         /**
          * Ensure the wholesale pricing EAV attributes and group exist before rendering the Admin product edit view.

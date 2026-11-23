@@ -79,7 +79,7 @@
             @if ($portalCustomer)
                 <div class="pk-header__desktop-links flex items-center gap-1">
                     <a
-                        href="{{ route('shop.customers.account.index') }}#catalog"
+                        href="{{ route('shop.catalog.index') }}"
                         class="pk-header__link"
                     >
                         Catalog

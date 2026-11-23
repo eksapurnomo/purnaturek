@@ -10,18 +10,30 @@ use App\Http\Controllers\Admin\ProductDocumentController as AdminProductDocument
 use App\Http\Controllers\Admin\WholesalePartnershipController as AdminWholesalePartnershipController;
 use App\Http\Controllers\Shop\AiAssistantChatController as ShopAiAssistantChatController;
 use App\Http\Controllers\WholesaleBuyerVerificationController;
+use App\Http\Controllers\WholesaleCatalogController;
 use App\Http\Controllers\WholesaleCompanySupplyController;
 use App\Http\Controllers\WholesaleContractController;
 use App\Http\Controllers\WholesaleConversationController;
 use App\Http\Controllers\WholesalePartnershipController;
 use App\Http\Controllers\WholesaleProductDocumentController;
+use App\Http\Middleware\ProtectPrivateCatalog;
 use Illuminate\Support\Facades\Route;
+use Webkul\Core\Http\Middleware\NoCacheMiddleware;
 
 /*
 |--------------------------------------------------------------------------
-| PurNatureK Members Portal — Member Routes
+| PurNatureK Members Portal — Private Catalog & Member Routes
 |--------------------------------------------------------------------------
 */
+Route::group(['middleware' => ['web', 'theme', 'locale', 'currency', ProtectPrivateCatalog::class, NoCacheMiddleware::class]], function () {
+    Route::get('catalog', [WholesaleCatalogController::class, 'index'])
+        ->name('shop.catalog.index');
+
+    Route::get('catalog/{slug}', [WholesaleCatalogController::class, 'show'])
+        ->where('slug', '[A-Za-z0-9\-_]+')
+        ->name('shop.catalog.show');
+});
+
 Route::group(['middleware' => ['web', 'theme', 'locale', 'currency', 'customer']], function () {
     Route::prefix('customer/account')->group(function () {
         // Buyer Verification Application & Status

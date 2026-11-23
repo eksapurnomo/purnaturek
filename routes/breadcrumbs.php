@@ -91,10 +91,16 @@ Breadcrumbs::for('compare', function (BreadcrumbTrail $trail) {
     $trail->push(trans('shop::app.compare.product-compare'), route('shop.compare.index'));
 });
 
-// Home > Product
-Breadcrumbs::for('product', function (BreadcrumbTrail $trail, $entity) {
+// Home > Wholesale Catalog
+Breadcrumbs::for('catalog', function (BreadcrumbTrail $trail) {
     $trail->parent('home');
-    $trail->push($entity->name ?? '', route('shop.product_or_category.index', $entity->url_key));
+    $trail->push('Wholesale Catalog', route('shop.catalog.index'));
+});
+
+// Home > Wholesale Catalog > Product
+Breadcrumbs::for('product', function (BreadcrumbTrail $trail, $entity) {
+    $trail->parent('catalog');
+    $trail->push($entity->name ?? '', route('shop.catalog.show', $entity->url_key));
 });
 
 // Home > RMA

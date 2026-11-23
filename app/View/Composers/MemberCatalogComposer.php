@@ -43,7 +43,7 @@ class MemberCatalogComposer
 
         $view->with([
             'catalogProducts'   => $products,
-            'catalogCards'      => $products->getCollection()->map(fn ($product) => $this->card($product))->all(),
+            'catalogCards'      => $products->getCollection()->map(fn ($product) => $this->buildCard($product))->all(),
             'catalogSearch'     => $search,
             'catalogCategory'   => $selectedCategory,
             'catalogCategories' => $categoryOptions,
@@ -51,6 +51,27 @@ class MemberCatalogComposer
             'memberGroupName'   => $customer?->group?->name,
             'memberIsCompany'   => $customer?->type === 'company',
         ]);
+    }
+
+    /**
+     * Related catalog product cards excluding the active product.
+     */
+    public function relatedCardsForProduct($currentProduct, int $limit = 4): array
+    {
+        $channel = core()->getCurrentChannel();
+
+        $catalogItems = $this->productRepository->getAll([
+            'channel_id'           => $channel->id,
+            'status'               => 1,
+            'visible_individually' => 1,
+        ]);
+
+        return $catalogItems->getCollection()
+            ->filter(fn ($candidate) => (int) $candidate->id !== (int) $currentProduct->id && filled($candidate->url_key))
+            ->take($limit)
+            ->map(fn ($candidate) => $this->buildCard($candidate))
+            ->values()
+            ->all();
     }
 
     /**
@@ -107,16 +128,18 @@ class MemberCatalogComposer
     /**
      * Presentation data for one product card, including member-safe wholesale pricing, MOQ, and supply status.
      */
-    protected function card($product): array
+    public function buildCard($product): array
     {
         $image = product_image()->getProductBaseImage($product);
         $pricing = WholesalePricingManager::formatForMember($product);
 
         return [
+            'id'      => $product->id,
             'name'    => $product->name,
             'sku'     => $product->sku,
+            'url_key' => $product->url_key,
             'summary' => Str::limit(trim(preg_replace('/\s+/', ' ', strip_tags((string) $product->short_description))), 140),
-            'url'     => route('shop.product_or_category.index', $product->url_key),
+            'url'     => route('shop.catalog.show', $product->url_key),
             'image'   => $image['medium_image_url'] ?? ($image['small_image_url'] ?? null),
             'alt'     => $image['alt'] ?? $product->name,
             'pricing' => $pricing,
